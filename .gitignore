@@ -39,6 +39,9 @@ node_modules/
 dist/
 .cache
 
+# === LOCAL DOCS (machine-specific, not for sharing) ===
+CLAUDE.md
+
 # === OS ===
 .DS_Store
 Thumbs.db
