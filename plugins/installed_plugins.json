@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "plugins": {
+    "aibp-base@aiblueprint": [
+      {
+        "scope": "user",
+        "installPath": "/home/haiko/.claude/plugins/cache/aiblueprint/aibp-base/1.0.1",
+        "version": "1.0.1",
+        "installedAt": "2026-03-27T11:17:47.835Z",
+        "lastUpdated": "2026-03-27T11:17:47.835Z",
+        "gitCommitSha": "4dabb516a0d6fb770fcb1aeb9d1a801f7b055f11"
+      }
+    ]
+  }
+}

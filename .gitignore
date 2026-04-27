@@ -1,0 +1,44 @@
+# === CREDENTIALS & SECRETS (NEVER push these) ===
+.credentials.json
+*.key
+*.pem
+*.p12
+.env
+.env.*
+
+# === CONVERSATION & SESSION DATA ===
+history.jsonl
+projects/
+session-env/
+sessions/
+file-history/
+tasks/
+shell-snapshots/
+paste-cache/
+
+# === CACHE & TEMPORARY ===
+backups/
+cache/
+downloads/
+ide/
+stats-cache.json
+mcp-needs-auth-cache.json
+
+# === PLUGINS (runtime state & cached marketplace data) ===
+plugins/cache/
+plugins/data/
+plugins/install-counts-cache.json
+plugins/marketplaces/
+
+# === AUDIO BINARIES (stored separately if needed) ===
+song/
+
+# === NODE / BUN ===
+node_modules/
+*.tsbuildinfo
+dist/
+.cache
+
+# === OS ===
+.DS_Store
+Thumbs.db
