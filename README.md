@@ -90,7 +90,6 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 | create-pr | `/create-pr` | Auto-generate PR title and description |
 | fix-errors | `/fix-errors` | Fix all ESLint and TypeScript errors in parallel |
 | fix-pr-comments | `/fix-pr-comments` | Apply all PR review comments automatically |
-| nim | `/nim` | Manage NVIDIA NIM routing (enable/disable, model, tasks) |
 
 ## Rules loaded on every session
 
@@ -127,15 +126,16 @@ Add your API key to `~/.claude/.env` (gitignored):
 NVIDIA_NIM_API_KEY=nvapi-xxxxxxxxxxxxxxxxxxxx
 ```
 
-### Configure via `/nim`
+### Configure via CLI
 
-```
-/nim              # show current status
-/nim enable       # start routing tasks to NIM
-/nim disable      # stop routing, fall back to Anthropic
-/nim model qwen/qwen3-coder-480b-a35b-instruct   # change model
-/nim task code-review off    # disable a specific task
-/nim models       # list all available NIM models
+```bash
+cd ~/.claude/scripts
+bun nim-router/src/cli.ts status                             # show config
+bun nim-router/src/cli.ts enable                             # enable NIM routing
+bun nim-router/src/cli.ts disable                            # disable, fall back to Anthropic
+bun nim-router/src/cli.ts set-model qwen/qwen3-coder-480b-a35b-instruct
+bun nim-router/src/cli.ts set-task code-review off           # disable a task
+bun nim-router/src/cli.ts list-models                        # list all available models
 ```
 
 ### Configuration file

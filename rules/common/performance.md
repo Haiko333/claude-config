@@ -2,6 +2,13 @@
 
 ## Model Selection Strategy
 
+**NVIDIA NIM** (cheapest — use first for read-only tasks):
+- File analysis, codebase exploration, first-pass code review
+- Use agents `nim-explore` and `nim-review`
+- Automatic fallback to Anthropic if NIM is disabled or API fails
+- Config: `~/.claude/nim-config.json` | Key: `~/.claude/.env` → `NVIDIA_NIM_API_KEY`
+- CLI: `bun ~/.claude/scripts/nim-router/src/cli.ts <enable|disable|status|set-model|set-task>`
+
 **Haiku 4.5** (90% of Sonnet capability, 3x cost savings):
 - Lightweight agents with frequent invocation
 - Pair programming and code generation
