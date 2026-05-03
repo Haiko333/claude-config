@@ -2,7 +2,11 @@
   "name": "scripts",
   "type": "module",
   "scripts": {
-    "test": "bun test auto-rename-session claude-code-ai statusline command-validator",
+    "test": "bun test auto-rename-session claude-code-ai statusline command-validator nim-router",
+    "nim:status": "bun nim-router/src/cli.ts status",
+    "nim:enable": "bun nim-router/src/cli.ts enable",
+    "nim:disable": "bun nim-router/src/cli.ts disable",
+    "nim:models": "bun nim-router/src/cli.ts list-models",
     "auto-rename:start": "bun auto-rename-session/src/index.ts",
     "auto-rename:rename-all": "bun auto-rename-session/src/rename-all.ts",
     "auto-rename:test": "bun test auto-rename-session",

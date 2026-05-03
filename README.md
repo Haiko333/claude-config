@@ -4,14 +4,16 @@ Personal Claude Code configuration — agents, rules, skills, hooks, and scripts
 
 ## What's inside
 
-| Directory | Purpose |
-|-----------|---------|
-| `agents/` | Custom agent definitions (code-reviewer, security-reviewer, build-error-resolver, …) |
+| Directory / File | Purpose |
+|------------------|---------|
+| `agents/` | Custom agent definitions (code-reviewer, security-reviewer, nim-explore, nim-review, …) |
 | `rules/common/` | Language-agnostic rules loaded on every session (security, testing, git workflow, …) |
 | `rules/typescript/` | TypeScript-specific rules |
-| `skills/` | Slash-command skills (`/ultrathink`, `/tdd-workflow`, `/apex`, …) |
+| `skills/` | Slash-command skills (`/ultrathink`, `/tdd-workflow`, `/apex`, `/nim`, …) |
 | `scripts/command-validator/` | PreToolUse security hook — blocks dangerous Bash commands |
 | `scripts/statusline/` | Custom status bar (git branch, session cost, token usage) |
+| `scripts/nim-router/` | NVIDIA NIM routing CLI — delegates analysis tasks to NIM models |
+| `nim-config.json` | NIM routing config — which tasks go to NIM and which model to use |
 | `settings.json` | Main Claude Code settings (hooks, permissions, statusline) |
 | `install.sh` | Installer for Linux & macOS |
 | `install.ps1` | Installer for Windows (PowerShell) |
@@ -68,6 +70,8 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 | `database-reviewer` | SQL, schema design, and Supabase patterns |
 | `explore-codebase` | Broad codebase exploration tasks |
 | `explore-docs` | Library documentation research via Context7 |
+| `nim-explore` | File analysis and exploration via NVIDIA NIM (cheaper than Anthropic for read tasks) |
+| `nim-review` | First-pass code review via NVIDIA NIM, escalates to code-reviewer if needed |
 | `security-reviewer` | OWASP Top 10 and vulnerability detection |
 | `typescript-reviewer` | TypeScript/JavaScript type safety review |
 | `websearch` | Quick web searches |
@@ -86,6 +90,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 | create-pr | `/create-pr` | Auto-generate PR title and description |
 | fix-errors | `/fix-errors` | Fix all ESLint and TypeScript errors in parallel |
 | fix-pr-comments | `/fix-pr-comments` | Apply all PR review comments automatically |
+| nim | `/nim` | Manage NVIDIA NIM routing (enable/disable, model, tasks) |
 
 ## Rules loaded on every session
 
@@ -108,6 +113,57 @@ Run tests:
 ```bash
 cd ~/.claude/scripts
 bun test command-validator
+```
+
+## NVIDIA NIM routing
+
+Delegate read-heavy tasks (file analysis, code exploration, first-pass review) to NVIDIA NIM models instead of Anthropic models, reducing costs.
+
+### Setup
+
+Add your API key to `~/.claude/.env` (gitignored):
+
+```bash
+NVIDIA_NIM_API_KEY=nvapi-xxxxxxxxxxxxxxxxxxxx
+```
+
+### Configure via `/nim`
+
+```
+/nim              # show current status
+/nim enable       # start routing tasks to NIM
+/nim disable      # stop routing, fall back to Anthropic
+/nim model qwen/qwen3-coder-480b-a35b-instruct   # change model
+/nim task code-review off    # disable a specific task
+/nim models       # list all available NIM models
+```
+
+### Configuration file
+
+`nim-config.json` (tracked in git, no secrets):
+
+```json
+{
+  "enabled": true,
+  "model": "qwen/qwen3-coder-480b-a35b-instruct",
+  "tasks": {
+    "file-analysis": true,
+    "code-review": true,
+    "explore": true,
+    "summarize": true,
+    "docs": false
+  }
+}
+```
+
+### CLI (direct)
+
+```bash
+cd ~/.claude/scripts
+bun run nim:status
+bun run nim:enable
+bun run nim:disable
+bun run nim:models
 ```
 
 ## Statusline

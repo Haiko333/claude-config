@@ -5,6 +5,7 @@
 *.p12
 .env
 .env.*
+# NIM API key lives in .env — nim-config.json (no secrets) IS tracked
 
 # === CONVERSATION & SESSION DATA ===
 history.jsonl
@@ -15,6 +16,7 @@ file-history/
 tasks/
 shell-snapshots/
 paste-cache/
+settings.local.json
 
 # === CACHE & TEMPORARY ===
 backups/
@@ -41,6 +43,7 @@ dist/
 
 # === LOCAL DOCS (machine-specific, not for sharing) ===
 CLAUDE.md
+scripts/CLAUDE.md
 
 # === OS ===
 .DS_Store

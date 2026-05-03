@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "model": "qwen/qwen3-coder-480b-a35b-instruct",
+  "baseUrl": "https://integrate.api.nvidia.com/v1",
+  "tasks": {
+    "file-analysis": true,
+    "code-review": true,
+    "explore": true,
+    "summarize": true,
+    "docs": false
+  }
+}
