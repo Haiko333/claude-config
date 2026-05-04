@@ -142,7 +142,8 @@ async function main() {
 		}
 
 		// Get external provider stats (if feature exists)
-		const providerStats = getTodayProviderStats ? getTodayProviderStats() : null;
+		const sessionStartMs = Date.now() - (input.cost.total_duration_ms ?? 0);
+		const providerStats = getTodayProviderStats ? getTodayProviderStats(sessionStartMs) : null;
 
 		// Get period cost from SQLite (if feature exists)
 		let periodCost: number | undefined;

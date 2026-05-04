@@ -39,7 +39,7 @@ function todayFile(): string {
 	return join(AI_ROUTER_DATA_DIR, `${date}.jsonl`)
 }
 
-export function getTodayProviderStats(): ProviderDayStats | null {
+export function getTodayProviderStats(sessionStartMs?: number): ProviderDayStats | null {
 	try {
 		const file = todayFile()
 		if (!existsSync(file)) return null
@@ -56,6 +56,10 @@ export function getTodayProviderStats(): ProviderDayStats | null {
 				}
 			})
 			.filter((e): e is UsageEntry => e !== null)
+			.filter((e) => {
+				if (!sessionStartMs) return true
+				return new Date(e.timestamp).getTime() >= sessionStartMs
+			})
 
 		if (entries.length === 0) return null
 
