@@ -1,64 +1,74 @@
 # Performance Optimization
 
-## Model Selection Strategy
+## MANDATORY: Token-Cost Decision Tree
 
-**External AI providers** (cheapest — use first for read-only tasks):
-- File analysis, codebase exploration, first-pass code review
-- Use agents `ai-explore` and `ai-review`
-- Automatic fallback to Anthropic if provider is disabled or API fails
-- Config: `~/.claude/ai-router-config.json` | Keys: `~/.claude/.env` (see `env.example`)
-- Skill: `/ai-router [status|use <provider>|enable|disable|models|set-model <m>|task <t> on|off]`
+Before ANY action, apply this decision tree — no exceptions:
+
+```
+Is the task READ-ONLY? (explore files, grep, analyze, summarize, review)
+  └─ YES → use ai-explore or ai-review agent. NEVER use Read/Bash/Grep directly.
+  └─ NO → Is it WRITING or COMPLEX REASONING?
+              └─ YES → use Sonnet (main context) or Write/Edit tools directly.
+```
+
+**NEVER read files directly in the main context when the goal is analysis or exploration.**
+Always delegate to an agent first. Only read a file directly if you need to make an edit to it.
+
+## Agent Selection (MANDATORY — not optional)
+
+| Task | MUST use | NEVER use |
+|------|----------|-----------|
+| Read/explore files for context | `ai-explore` | Read, Bash, Grep directly |
+| First-pass code review | `ai-review` | code-reviewer directly |
+| Understand codebase structure | `ai-explore` | multiple direct Read calls |
+| Grep for symbols/patterns | `ai-explore` | Bash grep directly |
+| Write/edit files | main context | agents |
+| Complex reasoning, architecture | main context | external providers |
+| Build errors | `build-error-resolver` | direct debugging in main context |
+
+## Model Tiers
+
+**External AI (cheapest — mandatory for read-only):**
+- `ai-explore` → file analysis, codebase exploration, grep, summarize
+- `ai-review` → first-pass code review (escalates to code-reviewer if CRITICAL/HIGH)
+- Config: `~/.claude/ai-router-config.json` | Keys: `~/.claude/.env`
 - CLI: `bun ~/.claude/scripts/ai-router/src/cli.ts <command>`
 - Providers: `nvidia-nim` | `openrouter` | `ollama` | `deepseek`
 
-**Haiku 4.5** (90% of Sonnet capability, 3x cost savings):
-- Lightweight agents with frequent invocation
-- Pair programming and code generation
-- Worker agents in multi-agent systems
+**Haiku 4.5 (use for lightweight agents):**
+- Worker agents in multi-agent pipelines
+- Repetitive pattern-matching tasks
+- Simple transformations
 
-**Sonnet 4.6** (Best coding model):
-- Main development work
+**Sonnet 4.6 (main context — reserve for):**
+- Writing and editing files
 - Orchestrating multi-agent workflows
-- Complex coding tasks
+- Complex reasoning and decisions
 
-**Opus 4.5** (Deepest reasoning):
-- Complex architectural decisions
-- Maximum reasoning requirements
-- Research and analysis tasks
+**Opus 4.7 (only when strictly needed):**
+- Architectural decisions requiring deep reasoning
+- Nothing else
 
-## Context Window Management
+## Parallel Execution (MANDATORY)
 
-Avoid last 20% of context window for:
-- Large-scale refactoring
-- Feature implementation spanning multiple files
-- Debugging complex interactions
+ALWAYS launch independent agents in parallel in a single message.
+NEVER run agents sequentially when they don't depend on each other.
 
-Lower context sensitivity tasks:
-- Single-file edits
-- Independent utility creation
-- Documentation updates
-- Simple bug fixes
+```
+# CORRECT: single message, multiple Agent tool calls
+Agent(ai-explore, "analyze file A") + Agent(ai-explore, "analyze file B")
 
-## Extended Thinking + Plan Mode
+# WRONG: sequential when independent
+Agent(ai-explore, "analyze file A") → wait → Agent(ai-explore, "analyze file B")
+```
 
-Extended thinking is enabled by default, reserving up to 31,999 tokens for internal reasoning.
+## Context Window
 
-Control extended thinking via:
-- **Toggle**: Option+T (macOS) / Alt+T (Windows/Linux)
-- **Config**: Set `alwaysThinkingEnabled` in `~/.claude/settings.json`
-- **Budget cap**: `export MAX_THINKING_TOKENS=10000`
-- **Verbose mode**: Ctrl+O to see thinking output
-
-For complex tasks requiring deep reasoning:
-1. Ensure extended thinking is enabled (on by default)
-2. Enable **Plan Mode** for structured approach
-3. Use multiple critique rounds for thorough analysis
-4. Use split role sub-agents for diverse perspectives
+When context > 80%:
+- Stop large explorations immediately
+- Delegate remaining reads to ai-explore
+- Summarize and compact before continuing
 
 ## Build Troubleshooting
 
-If build fails:
-1. Use **build-error-resolver** agent
-2. Analyze error messages
-3. Fix incrementally
-4. Verify after each fix
+Build fails → immediately use `build-error-resolver` agent. Do not debug inline.
