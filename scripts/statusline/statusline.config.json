@@ -79,8 +79,8 @@
   "providerStats": {
     "enabled": true,
     "showActualCost": true,
-    "showHaikuEquiv": true,
+    "showHaikuEquiv": false,
     "showTokens": true,
-    "showCallCount": true
+    "showCallCount": false
   }
 }
