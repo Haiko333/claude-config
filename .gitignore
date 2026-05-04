@@ -26,6 +26,10 @@ ide/
 stats-cache.json
 mcp-needs-auth-cache.json
 
+# === AI ROUTER (daily usage logs — ephemeral data) ===
+scripts/ai-router/data/
+scripts/statusline/data/
+
 # === PLUGINS (runtime state & cached marketplace data) ===
 plugins/cache/
 plugins/data/
