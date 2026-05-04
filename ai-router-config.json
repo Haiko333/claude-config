@@ -1,0 +1,36 @@
+{
+  "activeProvider": "nvidia-nim",
+  "tasks": {
+    "file-analysis": true,
+    "code-review": true,
+    "explore": true,
+    "summarize": true,
+    "docs": false
+  },
+  "providers": {
+    "nvidia-nim": {
+      "enabled": true,
+      "model": "qwen/qwen3-coder-480b-a35b-instruct",
+      "baseUrl": "https://integrate.api.nvidia.com/v1",
+      "apiKeyEnvVar": "NVIDIA_NIM_API_KEY"
+    },
+    "openrouter": {
+      "enabled": false,
+      "model": "deepseek/deepseek-coder",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "apiKeyEnvVar": "OPENROUTER_API_KEY"
+    },
+    "ollama": {
+      "enabled": false,
+      "model": "qwen2.5-coder:32b",
+      "baseUrl": "http://localhost:11434/v1",
+      "apiKeyEnvVar": "OLLAMA_API_KEY"
+    },
+    "deepseek": {
+      "enabled": false,
+      "model": "deepseek-coder",
+      "baseUrl": "https://api.deepseek.com/v1",
+      "apiKeyEnvVar": "DEEPSEEK_API_KEY"
+    }
+  }
+}

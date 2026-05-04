@@ -5,7 +5,8 @@
 *.p12
 .env
 .env.*
-# NIM API key lives in .env — nim-config.json (no secrets) IS tracked
+# API keys live in .env — ai-router-config.json and env.example (no secrets) ARE tracked
+nim-config.json
 
 # === CONVERSATION & SESSION DATA ===
 history.jsonl

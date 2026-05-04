@@ -2,12 +2,14 @@
 
 ## Model Selection Strategy
 
-**NVIDIA NIM** (cheapest — use first for read-only tasks):
+**External AI providers** (cheapest — use first for read-only tasks):
 - File analysis, codebase exploration, first-pass code review
-- Use agents `nim-explore` and `nim-review`
-- Automatic fallback to Anthropic if NIM is disabled or API fails
-- Config: `~/.claude/nim-config.json` | Key: `~/.claude/.env` → `NVIDIA_NIM_API_KEY`
-- CLI: `bun ~/.claude/scripts/nim-router/src/cli.ts <enable|disable|status|set-model|set-task>`
+- Use agents `ai-explore` and `ai-review`
+- Automatic fallback to Anthropic if provider is disabled or API fails
+- Config: `~/.claude/ai-router-config.json` | Keys: `~/.claude/.env` (see `env.example`)
+- Skill: `/ai-router [status|use <provider>|enable|disable|models|set-model <m>|task <t> on|off]`
+- CLI: `bun ~/.claude/scripts/ai-router/src/cli.ts <command>`
+- Providers: `nvidia-nim` | `openrouter` | `ollama` | `deepseek`
 
 **Haiku 4.5** (90% of Sonnet capability, 3x cost savings):
 - Lightweight agents with frequent invocation
