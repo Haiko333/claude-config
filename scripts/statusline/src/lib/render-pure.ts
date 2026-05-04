@@ -9,6 +9,7 @@ import type { StatuslineConfig } from "./config-types";
 import {
 	colors,
 	formatCost,
+	formatCostAuto,
 	formatDuration,
 	formatPath,
 	formatProgressBar,
@@ -41,6 +42,22 @@ export interface UsageLimit {
 	resets_at: string | null;
 }
 
+export interface ProviderDayStats {
+	totalTokens: number;
+	callCount: number;
+	actualCostUsd: number;
+	haikuEquivCostUsd: number;
+	byProvider: Record<
+		string,
+		{
+			tokens: number;
+			callCount: number;
+			actualCostUsd: number;
+			haikuEquivCostUsd: number;
+		}
+	>;
+}
+
 export interface RawStatuslineData {
 	git: RawGitData | null;
 	path: string;
@@ -55,6 +72,40 @@ export interface RawStatuslineData {
 	};
 	periodCost?: number;
 	todayCost?: number;
+	providerStats?: ProviderDayStats | null;
+}
+
+function formatProviderPart(
+	stats: ProviderDayStats | null | undefined,
+	config: StatuslineConfig["providerStats"],
+): string {
+	if (!config?.enabled || !stats || stats.callCount === 0) return "";
+
+	const parts: string[] = [];
+
+	if (config.showTokens) {
+		parts.push(formatTokens(stats.totalTokens, false));
+	}
+
+	if (config.showCallCount) {
+		parts.push(colors.gray(`×${stats.callCount}`));
+	}
+
+	if (config.showActualCost && stats.actualCostUsd > 0) {
+		parts.push(
+			`${colors.gray("$")}${colors.dimWhite(formatCostAuto(stats.actualCostUsd))}`,
+		);
+	}
+
+	if (config.showHaikuEquiv) {
+		parts.push(
+			colors.gray(`≈$${formatCostAuto(stats.haikuEquivCostUsd)} haiku`),
+		);
+	}
+
+	if (parts.length === 0) return "";
+
+	return `${colors.cyan("EXT:")} ${parts.join(" ")}`;
 }
 
 // Legacy interface for backwards compatibility
@@ -72,6 +123,7 @@ export interface StatuslineData {
 	};
 	periodCost?: number;
 	todayCost?: number;
+	providerStats?: ProviderDayStats | null;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -420,6 +472,13 @@ export function renderStatuslineRaw(
 	const dailyPart = formatDailyPart(data.todayCost ?? 0, config.dailySpend);
 	if (dailyPart) sections.push(dailyPart);
 
+	// External providers (ai-router stats)
+	const providerPart = formatProviderPart(
+		data.providerStats,
+		config.providerStats,
+	);
+	if (providerPart) sections.push(providerPart);
+
 	const output = sections.join(` ${sep} `);
 
 	if (config.oneLine) return output;
@@ -451,6 +510,7 @@ export function renderStatusline(
 		usageLimits: data.usageLimits,
 		periodCost: data.periodCost,
 		todayCost: data.todayCost,
+		providerStats: data.providerStats,
 	};
 
 	return renderStatuslineRaw(rawData, config);

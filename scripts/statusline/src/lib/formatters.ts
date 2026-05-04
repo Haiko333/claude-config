@@ -131,6 +131,14 @@ export function formatCost(
 	return cost.toFixed(2);
 }
 
+export function formatCostAuto(cost: number): string {
+	if (cost === 0) return "0.00";
+	if (cost >= 1) return cost.toFixed(2);
+	if (cost >= 0.01) return cost.toFixed(3);
+	if (cost >= 0.001) return cost.toFixed(4);
+	return cost.toFixed(5);
+}
+
 export function formatTokens(tokens: number, showDecimals = true): string {
 	if (tokens >= 1000000) {
 		const value = tokens / 1000000;

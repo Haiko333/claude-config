@@ -75,5 +75,12 @@
 	},
 	"dailySpend": {
 		"cost": { "enabled": true, "format": "decimal1" }
+	},
+	"providerStats": {
+		"enabled": true,
+		"showActualCost": true,
+		"showHaikuEquiv": true,
+		"showTokens": true,
+		"showCallCount": false
 	}
 }

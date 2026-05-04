@@ -29,6 +29,7 @@ import {
 import { getSystemPrompt } from './prompts'
 import type { ProviderName, TaskType } from './types'
 import { VALID_PROVIDERS, VALID_TASKS } from './types'
+import { logUsage } from './usage-logger'
 
 const args = process.argv.slice(2)
 const command = args[0]
@@ -159,6 +160,7 @@ async function runQuery(task: TaskType, prompt: string) {
 	process.stderr.write(
 		`\n[ai-router] provider=${result.provider} model=${result.model} prompt_tokens=${result.promptTokens} completion_tokens=${result.completionTokens}\n`,
 	)
+	logUsage(result.provider, result.model, task, result.promptTokens, result.completionTokens)
 }
 
 async function main() {

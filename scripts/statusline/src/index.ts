@@ -25,6 +25,7 @@ let normalizeResetsAt: any = null;
 let getPeriodCost: any = null;
 let getTodayCostV2: any = null;
 let saveSessionV2: any = null;
+let getTodayProviderStats: any = null;
 
 try {
 	const limitsModule = await import("./lib/features/limits");
@@ -48,6 +49,13 @@ try {
 	saveSessionV2 = spendModule.saveSessionV2;
 } catch {
 	// Spend tracking feature not available - that's OK!
+}
+
+try {
+	const providersModule = await import("./lib/features/providers");
+	getTodayProviderStats = providersModule.getTodayProviderStats;
+} catch {
+	// Provider stats feature not available - that's OK!
 }
 
 // Re-export from render-pure for backwards compatibility
@@ -133,6 +141,9 @@ async function main() {
 			contextPercentage = contextData.percentage;
 		}
 
+		// Get external provider stats (if feature exists)
+		const providerStats = getTodayProviderStats ? getTodayProviderStats() : null;
+
 		// Get period cost from SQLite (if feature exists)
 		let periodCost: number | undefined;
 		let todayCost: number | undefined;
@@ -173,6 +184,7 @@ async function main() {
 				},
 			}),
 			...((getPeriodCost || getTodayCostV2) && { periodCost, todayCost }),
+			...(getTodayProviderStats && { providerStats }),
 		};
 
 		const output = renderStatusline(data, config);
