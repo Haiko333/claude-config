@@ -11,26 +11,27 @@ These trigger automatically — Claude decides, user does not ask:
 
 | Situation | Agent to use | Timing |
 |-----------|-------------|--------|
-| Need to understand files/codebase | `ai-explore` | BEFORE reading any file |
-| Exploring more than 1 file | `ai-explore` | Always, in parallel |
-| Grep/search across codebase | `ai-explore` | Always |
-| Just wrote or modified code | `ai-review` then `code-reviewer` if issues | Immediately after |
+| Need to understand files/codebase | `Explore` | BEFORE reading any file |
+| Exploring more than 1 file | `Explore` | Always, in parallel |
+| Grep/search across codebase | `Explore` | Always |
+| Just wrote or modified code | `code-reviewer` | Immediately after |
 | Security-sensitive code changed | `security-reviewer` | Immediately after |
 | Build or type errors | `build-error-resolver` | Immediately |
 | Complex feature request | `Plan` agent | Before any code |
 | Architectural decision needed | `Plan` agent | Before implementing |
+| Writing SQL, migrations, or DB schema (MySQL) | `mysql-reviewer` | Immediately after |
 
 ## Available Agents
 
 | Agent | Type | Best for |
 |-------|------|----------|
-| `ai-explore` | External (cheap) | File reads, grep, codebase exploration |
-| `ai-review` | External (cheap) | First-pass code review |
-| `explore-codebase` | Anthropic | Deep analysis when ai-explore insufficient |
-| `code-reviewer` | Anthropic | Final code review (after ai-review escalates) |
+| `Explore` | Anthropic | File reads, grep, codebase exploration |
+| `explore-codebase` | Anthropic | Deep multi-file analysis |
+| `code-reviewer` | Anthropic | Code review |
 | `security-reviewer` | Anthropic | Security audit |
 | `build-error-resolver` | Anthropic | Build/type errors |
 | `typescript-reviewer` | Anthropic | TS/JS specific review |
+| `mysql-reviewer` | Anthropic | MySQL queries, schema, migrations, performance |
 | `Plan` | Anthropic | Implementation planning |
 
 ## Parallel Execution
@@ -39,7 +40,7 @@ ALWAYS send independent agents in a single message:
 
 ```
 # One message with multiple Agent calls = parallel execution
-Agent(ai-explore, task A) + Agent(ai-explore, task B) + Agent(ai-explore, task C)
+Agent(Explore, task A) + Agent(Explore, task B) + Agent(Explore, task C)
 ```
 
 Split parallel work whenever:

@@ -53,7 +53,6 @@ export interface StatuslineConfig {
 	features?: {
 		usageLimits?: boolean;
 		spendTracking?: boolean;
-		providerStats?: boolean;
 	};
 	oneLine: boolean;
 	showSonnetModel: boolean;
@@ -101,12 +100,5 @@ export interface StatuslineConfig {
 	};
 	dailySpend: {
 		cost: CostConfig;
-	};
-	providerStats: {
-		enabled: boolean;
-		showActualCost: boolean;
-		showHaikuEquiv: boolean;
-		showTokens: boolean;
-		showCallCount: boolean;
 	};
 }

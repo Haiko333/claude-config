@@ -3,11 +3,6 @@
   "type": "module",
   "scripts": {
     "test": "bun test auto-rename-session claude-code-ai statusline command-validator",
-    "ai:status": "bun ai-router/src/cli.ts status",
-    "ai:enable": "bun ai-router/src/cli.ts enable",
-    "ai:disable": "bun ai-router/src/cli.ts disable",
-    "ai:providers": "bun ai-router/src/cli.ts providers",
-    "ai:models": "bun ai-router/src/cli.ts models",
     "auto-rename:start": "bun auto-rename-session/src/index.ts",
     "auto-rename:rename-all": "bun auto-rename-session/src/rename-all.ts",
     "auto-rename:test": "bun test auto-rename-session",
