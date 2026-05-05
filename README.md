@@ -6,15 +6,12 @@ Personal Claude Code configuration — agents, rules, skills, hooks, and scripts
 
 | Directory / File | Purpose |
 |------------------|---------|
-| `agents/` | Custom agent definitions (code-reviewer, security-reviewer, ai-explore, ai-review, …) |
+| `agents/` | Custom agent definitions (code-reviewer, security-reviewer, …) |
 | `rules/common/` | Language-agnostic rules loaded on every session (security, testing, git workflow, …) |
 | `rules/typescript/` | TypeScript-specific rules |
-| `skills/` | Slash-command skills (`/ultrathink`, `/tdd-workflow`, `/apex`, `/ai-router`, …) |
+| `skills/` | Slash-command skills (`/ultrathink`, `/tdd-workflow`, `/apex`, …) |
 | `scripts/command-validator/` | PreToolUse security hook — blocks dangerous Bash commands |
 | `scripts/statusline/` | Custom status bar (git branch, session cost, token usage) |
-| `scripts/ai-router/` | Multi-provider AI routing CLI — delegates analysis tasks to cheaper models |
-| `ai-router-config.json` | Routing config — active provider, tasks, per-provider settings (no secrets) |
-| `env.example` | Template for `~/.claude/.env` — all API keys documented |
 | `settings.json` | Main Claude Code settings (hooks, permissions, statusline) |
 | `install.sh` | Installer for Linux & macOS |
 | `install.ps1` | Installer for Windows (PowerShell) |
@@ -71,8 +68,6 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 | `database-reviewer` | SQL, schema design, and Supabase patterns |
 | `explore-codebase` | Broad codebase exploration tasks |
 | `explore-docs` | Library documentation research via Context7 |
-| `ai-explore` | File analysis and exploration via configured AI provider (saves Anthropic tokens) |
-| `ai-review` | First-pass code review via configured AI provider, escalates to code-reviewer if needed |
 | `security-reviewer` | OWASP Top 10 and vulnerability detection |
 | `typescript-reviewer` | TypeScript/JavaScript type safety review |
 | `websearch` | Quick web searches |
@@ -81,7 +76,6 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 
 | Skill | Command | Purpose |
 |-------|---------|---------|
-| ai-router | `/ai-router` | Manage AI provider routing (switch provider, status, models) |
 | ultrathink | `/ultrathink` | Deep thinking mode for complex problems |
 | apex | `/apex` | Analyze-Plan-Execute-Validate workflow |
 | tdd-workflow | `/tdd-workflow` | Enforces write-tests-first discipline |
@@ -115,90 +109,6 @@ Run tests:
 cd ~/.claude/scripts
 bun test command-validator
 ```
-
-## AI Router
-
-Delegate read-heavy tasks (file analysis, code exploration, first-pass review) to external AI providers instead of Anthropic models, reducing costs. Supports NVIDIA NIM, OpenRouter, Ollama, and DeepSeek.
-
-### Setup
-
-1. Copy the env template and fill in your key(s):
-
-```bash
-cp ~/.claude/env.example ~/.claude/.env
-# Edit .env — only the active provider's key is required
-```
-
-2. Check the default config:
-
-```bash
-/ai-router status
-```
-
-### Providers
-
-| Provider | Type | Best for |
-|----------|------|----------|
-| `nvidia-nim` | Cloud API | Code analysis, exploration (default) |
-| `openrouter` | Cloud API (100+ models) | Flexibility, model variety |
-| `ollama` | Local or hosted | Privacy, zero API cost |
-| `deepseek` | Cloud API | Strong coding tasks |
-
-### Manage via `/ai-router` skill
-
-```
-/ai-router status                   # show active provider, tasks, all providers
-/ai-router use openrouter           # switch to OpenRouter
-/ai-router use ollama               # switch to local Ollama
-/ai-router enable                   # enable routing
-/ai-router disable                  # disable (fall back to Claude)
-/ai-router models                   # list models from active provider
-/ai-router set-model <model-id>     # change model for active provider
-/ai-router task code-review off     # disable a specific task
-/ai-router providers                # detailed view of all providers
-```
-
-### Manage via CLI (direct)
-
-```bash
-cd ~/.claude/scripts
-bun run ai:status
-bun run ai:enable
-bun run ai:disable
-bun run ai:providers
-bun run ai:models
-# Or directly:
-bun ai-router/src/cli.ts use deepseek
-bun ai-router/src/cli.ts set-model deepseek deepseek-coder-v2
-bun ai-router/src/cli.ts set-url ollama http://my-server:11434/v1
-```
-
-### Configuration file
-
-`ai-router-config.json` (tracked in git, no secrets):
-
-```json
-{
-  "activeProvider": "nvidia-nim",
-  "tasks": {
-    "file-analysis": true,
-    "code-review": true,
-    "explore": true,
-    "summarize": true,
-    "docs": false
-  },
-  "providers": {
-    "nvidia-nim": { "enabled": true, "model": "qwen/qwen3-coder-480b-a35b-instruct", ... },
-    "openrouter": { "enabled": false, "model": "deepseek/deepseek-coder", ... },
-    "ollama":     { "enabled": false, "model": "qwen2.5-coder:32b", ... },
-    "deepseek":   { "enabled": false, "model": "deepseek-coder", ... }
-  }
-}
-```
-
-### Migration from nim-config.json
-
-If you have a `nim-config.json` from a previous version, the router automatically migrates it to `ai-router-config.json` on first run. The old file is kept as-is.
 
 ## Statusline
 
