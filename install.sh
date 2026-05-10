@@ -132,6 +132,37 @@ fix_plugin_placeholders() {
   fi
 }
 
+configure_statusline() {
+  log_step "Statusline configuration"
+  local settings="$CLAUDE_DIR/settings.json"
+
+  if grep -q '"statusLine"' "$settings" 2>/dev/null; then
+    log_info "statusLine already configured"; return
+  fi
+
+  if ! command -v python3 &>/dev/null; then
+    log_warn "python3 not found — add manually to $settings:"
+    log_warn "  \"statusLine\": { \"type\": \"command\", \"command\": \"bun $CLAUDE_DIR/scripts/statusline/src/index.ts\", \"padding\": 0 }"
+    return
+  fi
+
+  python3 - "$settings" "$CLAUDE_DIR" <<'PYEOF'
+import json, sys
+settings_path, claude_dir = sys.argv[1], sys.argv[2]
+with open(settings_path) as f:
+    config = json.load(f)
+config["statusLine"] = {
+    "type": "command",
+    "command": f"bun {claude_dir}/scripts/statusline/src/index.ts",
+    "padding": 0
+}
+with open(settings_path, "w") as f:
+    json.dump(config, f, indent=2)
+    f.write("\n")
+PYEOF
+  log_success "statusLine configured in settings.json"
+}
+
 install_ccusage() {
   log_step "Global tools"
   if command -v ccusage &>/dev/null; then
@@ -215,6 +246,7 @@ main() {
   fix_paths
   fix_plugin_placeholders
   install_ccusage
+  configure_statusline
   setup_aliases
   show_summary
 }
