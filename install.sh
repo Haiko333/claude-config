@@ -137,6 +137,11 @@ configure_statusline() {
   log_step "Statusline configuration"
   local settings="$CLAUDE_DIR/settings.json"
 
+  if [ ! -f "$settings" ]; then
+    echo '{}' > "$settings"
+    log_info "Created empty settings.json"
+  fi
+
   if grep -q '"statusLine"' "$settings" 2>/dev/null; then
     log_info "statusLine already configured"; return
   fi
