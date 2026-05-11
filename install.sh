@@ -65,6 +65,7 @@ backup_config() {
     log_warn "~/.claude exists but is not a git repo — backing up to $(basename "$backup")"
     cp -r "$CLAUDE_DIR" "$backup"
     log_success "Backup created at $backup"
+    rm -rf "$CLAUDE_DIR"
   fi
 }
 
