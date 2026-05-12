@@ -18,6 +18,9 @@ paste-cache/
 settings.local.json
 settings.json
 
+# === RUNTIME STATE ===
+.last-cleanup
+
 # === CACHE & TEMPORARY ===
 backups/
 cache/

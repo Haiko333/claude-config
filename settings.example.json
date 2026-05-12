@@ -1,0 +1,41 @@
+{
+  "env": {
+    "CLAUDE_CODE_USE_BEDROCK": "1",
+    "AWS_REGION": "us-east-1",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "global.anthropic.claude-sonnet-4-6[1m]",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "global.anthropic.claude-opus-4-6-v1[1m]",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+  },
+  "model": "opus",
+  "statusLine": {
+    "type": "command",
+    "command": "bun $HOME/.claude/scripts/statusline/src/index.ts",
+    "padding": 0
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "paplay /usr/share/sounds/Oxygen-Sys-App-Positive.ogg"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "paplay /usr/share/sounds/freedesktop/stereo/complete.oga"
+          }
+        ]
+      }
+    ]
+  }
+}
