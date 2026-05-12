@@ -137,34 +137,14 @@ fix_plugin_placeholders() {
   fi
 }
 
-setup_settings() {
-  log_step "Settings configuration"
-  local settings="$CLAUDE_DIR/settings.json"
-  local example="$CLAUDE_DIR/settings.example.json"
-
-  if [ -f "$settings" ]; then
-    log_info "settings.json already exists — keeping current config"
-    return
-  fi
-
-  if [ ! -f "$example" ]; then
-    log_warn "settings.example.json not found — skipping"
-    return
-  fi
-
-  cp "$example" "$settings"
-  log_success "Copied settings.example.json → settings.json"
-
+adapt_sound_commands() {
+  local settings="$1"
   local os
   os=$(detect_os)
 
   if [ "$os" = "macos" ]; then
-    local stop_sound="/System/Library/Sounds/Glass.aiff"
-    local notif_sound="/System/Library/Sounds/Ping.aiff"
-    local player="afplay"
-
-    sed_inplace "s|paplay /usr/share/sounds/Oxygen-Sys-App-Positive.ogg|$player $stop_sound|g" "$settings"
-    sed_inplace "s|paplay /usr/share/sounds/freedesktop/stereo/complete.oga|$player $notif_sound|g" "$settings"
+    sed_inplace "s|paplay /usr/share/sounds/Oxygen-Sys-App-Positive.ogg|afplay /System/Library/Sounds/Glass.aiff|g" "$settings"
+    sed_inplace "s|paplay /usr/share/sounds/freedesktop/stereo/complete.oga|afplay /System/Library/Sounds/Ping.aiff|g" "$settings"
     log_success "Sound hooks adapted for macOS (afplay)"
   elif [ "$os" = "linux" ]; then
     if command -v paplay &>/dev/null; then
@@ -183,6 +163,74 @@ setup_settings() {
       log_warn "Some sound files missing — install sound-theme-freedesktop or oxygen-sounds for notification sounds"
     fi
   fi
+}
+
+setup_settings() {
+  log_step "Settings configuration"
+  local settings="$CLAUDE_DIR/settings.json"
+  local example="$CLAUDE_DIR/settings.example.json"
+
+  if [ ! -f "$example" ]; then
+    log_warn "settings.example.json not found — skipping"
+    return
+  fi
+
+  if [ ! -f "$settings" ]; then
+    cp "$example" "$settings"
+    log_success "Created settings.json from example"
+    adapt_sound_commands "$settings"
+    return
+  fi
+
+  if ! command -v python3 &>/dev/null; then
+    log_warn "python3 not found — cannot merge settings automatically"
+    log_warn "Copy missing keys from settings.example.json manually"
+    return
+  fi
+
+  local merged_count
+  merged_count=$(python3 - "$settings" "$example" <<'PYEOF'
+import json, sys
+
+settings_path, example_path = sys.argv[1], sys.argv[2]
+
+with open(settings_path) as f:
+    current = json.load(f)
+with open(example_path) as f:
+    example = json.load(f)
+
+merged = 0
+
+for key, value in example.items():
+    if key not in current:
+        current[key] = value
+        merged += 1
+    elif key == "env" and isinstance(value, dict) and isinstance(current.get(key), dict):
+        for env_key, env_val in value.items():
+            if env_key not in current[key]:
+                current[key][env_key] = env_val
+                merged += 1
+    elif key == "hooks" and isinstance(value, dict) and isinstance(current.get(key), dict):
+        for hook_type, hook_list in value.items():
+            if hook_type not in current[key]:
+                current[key][hook_type] = hook_list
+                merged += 1
+
+with open(settings_path, "w") as f:
+    json.dump(current, f, indent=2)
+    f.write("\n")
+
+print(merged)
+PYEOF
+  )
+
+  if [ "$merged_count" = "0" ]; then
+    log_info "settings.json already has all required keys"
+  else
+    log_success "Merged $merged_count missing key(s) into settings.json"
+  fi
+
+  adapt_sound_commands "$settings"
 }
 
 configure_statusline() {
