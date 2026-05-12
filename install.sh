@@ -56,6 +56,10 @@ install_bun() {
   fi
   export BUN_INSTALL="$HOME/.bun"
   export PATH="$BUN_INSTALL/bin:$PATH"
+  if ! command -v bun &>/dev/null; then
+    log_error "bun installation failed — install manually: https://bun.sh"
+    exit 1
+  fi
   log_success "bun $(bun --version) installed"
 }
 
@@ -130,6 +134,54 @@ fix_plugin_placeholders() {
 
   if [ "$fixed" -eq 0 ]; then
     log_info "No unresolved placeholders found"
+  fi
+}
+
+setup_settings() {
+  log_step "Settings configuration"
+  local settings="$CLAUDE_DIR/settings.json"
+  local example="$CLAUDE_DIR/settings.example.json"
+
+  if [ -f "$settings" ]; then
+    log_info "settings.json already exists — keeping current config"
+    return
+  fi
+
+  if [ ! -f "$example" ]; then
+    log_warn "settings.example.json not found — skipping"
+    return
+  fi
+
+  cp "$example" "$settings"
+  log_success "Copied settings.example.json → settings.json"
+
+  local os
+  os=$(detect_os)
+
+  if [ "$os" = "macos" ]; then
+    local stop_sound="/System/Library/Sounds/Glass.aiff"
+    local notif_sound="/System/Library/Sounds/Ping.aiff"
+    local player="afplay"
+
+    sed_inplace "s|paplay /usr/share/sounds/Oxygen-Sys-App-Positive.ogg|$player $stop_sound|g" "$settings"
+    sed_inplace "s|paplay /usr/share/sounds/freedesktop/stereo/complete.oga|$player $notif_sound|g" "$settings"
+    log_success "Sound hooks adapted for macOS (afplay)"
+  elif [ "$os" = "linux" ]; then
+    if command -v paplay &>/dev/null; then
+      log_success "Sound hooks ready (paplay)"
+    elif command -v pw-play &>/dev/null; then
+      sed_inplace "s|paplay|pw-play|g" "$settings"
+      log_success "Sound hooks adapted (pw-play)"
+    elif command -v aplay &>/dev/null; then
+      sed_inplace "s|paplay|aplay|g" "$settings"
+      log_success "Sound hooks adapted (aplay)"
+    else
+      log_warn "No audio player found (paplay/pw-play/aplay) — sound hooks may not work"
+    fi
+
+    if [ ! -f "/usr/share/sounds/Oxygen-Sys-App-Positive.ogg" ] || [ ! -f "/usr/share/sounds/freedesktop/stereo/complete.oga" ]; then
+      log_warn "Some sound files missing — install sound-theme-freedesktop or oxygen-sounds for notification sounds"
+    fi
   fi
 }
 
@@ -251,6 +303,7 @@ main() {
   install_dependencies
   fix_paths
   fix_plugin_placeholders
+  setup_settings
   install_ccusage
   configure_statusline
   setup_aliases
