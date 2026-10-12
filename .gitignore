@@ -20,6 +20,9 @@ settings.json
 
 # === RUNTIME STATE ===
 .last-cleanup
+.last-update-result.json
+state/
+settings.json.bak
 
 # === CACHE & TEMPORARY ===
 backups/
@@ -38,6 +41,11 @@ plugins/cache/
 plugins/data/
 plugins/install-counts-cache.json
 plugins/marketplaces/
+plugins/store/
+plugins/synced/
+plugins/.last_inuse_sweep
+plugins/plugin-directory-cache-v2.json*
+skills/synced/
 
 # === AUDIO BINARIES (stored separately if needed) ===
 song/
