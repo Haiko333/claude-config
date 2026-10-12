@@ -87,6 +87,18 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 | fix-errors | `/fix-errors` | Fix all ESLint and TypeScript errors in parallel |
 | fix-pr-comments | `/fix-pr-comments` | Apply all PR review comments automatically |
 
+## Plugins
+
+Declared in `settings.example.json` (`enabledPlugins` + `extraKnownMarketplaces`), so Claude Code installs them on first launch.
+
+| Plugin | Purpose |
+|--------|---------|
+| `aibp-base@aiblueprint` | Base agents and skills from AI Blueprint |
+| `clangd-lsp@claude-plugins-official` | C/C++ language server |
+| `ponytail@ponytail` | Lazy senior dev mode — always on, `/ponytail [lite\|full\|ultra\|off]` |
+
+If one is missing: `claude plugin install <name>`.
+
 ## Rules loaded on every session
 
 - **security** — mandatory checks before every commit (no hardcoded secrets, input validation, etc.)

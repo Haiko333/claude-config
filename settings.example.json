@@ -37,5 +37,24 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "aibp-base@aiblueprint": true,
+    "clangd-lsp@claude-plugins-official": true,
+    "ponytail@ponytail": true
+  },
+  "extraKnownMarketplaces": {
+    "aiblueprint": {
+      "source": {
+        "source": "github",
+        "repo": "melvynx/aiblueprint"
+      }
+    },
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
+      }
+    }
   }
 }
