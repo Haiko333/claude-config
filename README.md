@@ -102,13 +102,13 @@ If one is missing: `claude plugin install <name>`.
 ## Rules loaded on every session
 
 - **security** — mandatory checks before every commit (no hardcoded secrets, input validation, etc.)
-- **testing** — 80% minimum coverage, TDD workflow enforced
-- **code-review** — mandatory review triggers and severity levels
+- **testing** — tests for risky logic and bug fixes, scaled to the task
+- **code-review** — review before PRs and for security-sensitive code, severity levels
 - **coding-style** — immutability, KISS/DRY/YAGNI, file size limits
 - **git-workflow** — conventional commits format, PR workflow
-- **development-workflow** — research → plan → TDD → review → commit pipeline
-- **performance** — model selection strategy, context window management
-- **agents** — when to spawn which agent and how to parallelize
+- **development-workflow** — process scaled to the task (small change vs feature)
+- **performance** — token economy, model tiers, context window
+- **agents** — work directly by default; when delegating is worth it
 - **patterns** — repository pattern, API response format, skeleton projects
 
 ## Security hook
