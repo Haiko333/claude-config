@@ -63,3 +63,12 @@ scripts/CLAUDE.md
 # === OS ===
 .DS_Store
 Thumbs.db
+
+# === RUNTIME / PERSONAL (added 2026-11-02) ===
+uploads/
+telemetry/
+ponytail-modes/
+.ponytail-active
+*.lock
+dev-mods/
+.claude-plugin/types/

@@ -1,0 +1,1 @@
+{ "name": "secret-redactor", "version": "0.1.0", "description": "Replaces secrets, emails and public IPs in tool output with placeholders before the model reads them" }

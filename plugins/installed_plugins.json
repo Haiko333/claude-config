@@ -4,11 +4,78 @@
     "aibp-base@aiblueprint": [
       {
         "scope": "user",
-        "installPath": "/home/haiko/.claude/plugins/cache/aiblueprint/aibp-base/1.0.1",
+        "installPath": "/home/h41k0/.claude/plugins/cache/aiblueprint/aibp-base/1.0.1",
         "version": "1.0.1",
-        "installedAt": "2026-03-27T11:17:47.835Z",
-        "lastUpdated": "2026-03-27T11:17:47.835Z",
-        "gitCommitSha": "4dabb516a0d6fb770fcb1aeb9d1a801f7b055f11"
+        "installedAt": "2026-10-05T21:57:10.460Z",
+        "lastUpdated": "2026-10-05T21:57:10.460Z",
+        "gitCommitSha": "c4eab41e1096c294592b3eb086f00edf1c86ba9c"
+      }
+    ],
+    "clangd-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-10-06T08:17:29.249Z",
+        "lastUpdated": "2026-10-06T08:17:29.249Z",
+        "gitCommitSha": "d4226d062928f8d9505dbdeadd10217d23361052"
+      }
+    ],
+    "ponytail@ponytail": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/ponytail/ponytail/5.3.3",
+        "version": "5.3.3",
+        "installedAt": "2026-10-12T13:08:51.249Z",
+        "lastUpdated": "2026-11-02T11:01:09.565Z",
+        "gitCommitSha": "96608e078b2d5ea607c5c3b8b5a54d1c1fba6846"
+      }
+    ],
+    "postman@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/postman/2.0.1",
+        "version": "2.0.1",
+        "installedAt": "2026-10-20T12:51:57.102Z",
+        "lastUpdated": "2026-10-20T12:51:57.102Z",
+        "gitCommitSha": "c6352ef5605cd46d3f817e15c601eeb9a56c08f7"
+      }
+    ],
+    "rust-analyzer-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-10-26T16:49:32.692Z",
+        "lastUpdated": "2026-10-26T16:49:32.692Z",
+        "gitCommitSha": "58267944f92187b7d6a1c822165c96c81c864806"
+      }
+    ],
+    "blast-radius@h41k0-mods": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/h41k0-mods/blast-radius/0.1.0",
+        "version": "0.1.0",
+        "installedAt": "2026-11-02T11:04:57.161Z",
+        "lastUpdated": "2026-11-02T11:04:57.161Z"
+      }
+    ],
+    "secret-redactor@h41k0-mods": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/h41k0-mods/secret-redactor/0.1.0",
+        "version": "0.1.0",
+        "installedAt": "2026-11-02T11:04:57.960Z",
+        "lastUpdated": "2026-11-02T11:04:57.960Z"
+      }
+    ],
+    "token-weather@h41k0-mods": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/h41k0-mods/token-weather/0.1.0",
+        "version": "0.1.0",
+        "installedAt": "2026-11-02T11:04:58.728Z",
+        "lastUpdated": "2026-11-02T11:04:58.728Z"
       }
     ]
   }

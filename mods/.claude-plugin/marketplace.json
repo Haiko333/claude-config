@@ -1,0 +1,9 @@
+{
+  "name": "h41k0-mods",
+  "owner": { "name": "h41k0" },
+  "plugins": [
+    { "name": "blast-radius", "source": "./blast-radius", "description": "Asks before risky Bash commands" },
+    { "name": "secret-redactor", "source": "./secret-redactor", "description": "Redacts secrets in tool output" },
+    { "name": "token-weather", "source": "./token-weather", "description": "Context/quota/cost band above the prompt" }
+  ]
+}

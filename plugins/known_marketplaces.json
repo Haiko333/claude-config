@@ -4,15 +4,31 @@
       "source": "github",
       "repo": "anthropics/claude-plugins-official"
     },
-    "installLocation": "/home/haiko/.claude/plugins/marketplaces/claude-plugins-official",
-    "lastUpdated": "2026-05-12T10:46:40.372Z"
+    "installLocation": "/home/h41k0/.claude/plugins/marketplaces/claude-plugins-official",
+    "lastUpdated": "2026-11-02T11:03:14.108Z"
   },
   "aiblueprint": {
     "source": {
       "source": "github",
       "repo": "melvynx/aiblueprint"
     },
-    "installLocation": "/home/haiko/.claude/plugins/marketplaces/aiblueprint",
-    "lastUpdated": "2026-05-12T10:39:26.042Z"
+    "installLocation": "/home/h41k0/.claude/plugins/marketplaces/aiblueprint",
+    "lastUpdated": "2026-11-02T11:01:03.639Z"
+  },
+  "ponytail": {
+    "source": {
+      "source": "github",
+      "repo": "DietrichGebert/ponytail"
+    },
+    "installLocation": "/home/h41k0/.claude/plugins/marketplaces/ponytail",
+    "lastUpdated": "2026-11-02T11:01:07.736Z"
+  },
+  "h41k0-mods": {
+    "source": {
+      "source": "directory",
+      "path": "/home/h41k0/.claude/mods"
+    },
+    "installLocation": "/home/h41k0/.claude/mods",
+    "lastUpdated": "2026-11-02T11:04:56.425Z"
   }
 }

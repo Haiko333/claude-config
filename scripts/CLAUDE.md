@@ -8,7 +8,6 @@ Monorepo containing Claude Code utilities and extensions.
 scripts/
 ├── auto-rename-session/  # Auto-generates session titles via AI
 ├── claude-code-ai/       # Shared Claude API helpers
-├── command-validator/    # Security validation for bash commands
 ├── statusline/           # Custom statusline for Claude Code
 └── package.json          # Root package with all scripts
 ```
@@ -26,7 +25,6 @@ bun run lint              # Lint all packages
 |---------|------|-------|
 | auto-rename-session | `bun run auto-rename:test` | `bun run auto-rename:start` |
 | claude-code-ai | `bun run ai:test` | - |
-| command-validator | `bun run validator:test` | `bun run validator:cli` |
 | statusline | `bun run statusline:test` | `bun run statusline:start` |
 
 ## Cross-Platform Support
