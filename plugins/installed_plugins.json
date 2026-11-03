@@ -77,6 +77,76 @@
         "installedAt": "2026-11-02T11:04:58.728Z",
         "lastUpdated": "2026-11-02T11:04:58.728Z"
       }
+    ],
+    "superpowers@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/superpowers/7.0.0",
+        "version": "7.0.0",
+        "installedAt": "2026-11-03T13:02:45.520Z",
+        "lastUpdated": "2026-11-03T13:02:45.520Z",
+        "gitCommitSha": "bb92a77741419a4ab5f06e711a283343f1ada0c3"
+      }
+    ],
+    "context7@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/context7/a7ba5b93db0c",
+        "version": "a7ba5b93db0c",
+        "installedAt": "2026-11-03T13:02:46.221Z",
+        "lastUpdated": "2026-11-03T13:02:46.221Z",
+        "gitCommitSha": "a7ba5b93db0c7c8d17f3f1d25853adca79598a1a"
+      }
+    ],
+    "security-guidance@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.17",
+        "version": "2.0.17",
+        "installedAt": "2026-11-03T13:02:47.060Z",
+        "lastUpdated": "2026-11-03T13:02:47.060Z",
+        "gitCommitSha": "a7ba5b93db0c7c8d17f3f1d25853adca79598a1a"
+      }
+    ],
+    "typescript-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/typescript-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-11-03T13:02:47.869Z",
+        "lastUpdated": "2026-11-03T13:02:47.869Z",
+        "gitCommitSha": "a7ba5b93db0c7c8d17f3f1d25853adca79598a1a"
+      }
+    ],
+    "serena@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/serena/a7ba5b93db0c",
+        "version": "a7ba5b93db0c",
+        "installedAt": "2026-11-03T13:02:48.689Z",
+        "lastUpdated": "2026-11-03T13:02:48.689Z",
+        "gitCommitSha": "a7ba5b93db0c7c8d17f3f1d25853adca79598a1a"
+      }
+    ],
+    "mattpocock-skills@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/1.3.1",
+        "version": "1.3.1",
+        "installedAt": "2026-11-03T13:02:51.356Z",
+        "lastUpdated": "2026-11-03T13:02:51.356Z",
+        "gitCommitSha": "49dd158d1076134a641b33efb035946536778336"
+      }
+    ],
+    "ui-ux-pro-max@ui-ux-pro-max-skill": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.15.0",
+        "version": "2.15.0",
+        "installedAt": "2026-11-03T13:03:00.281Z",
+        "lastUpdated": "2026-11-03T13:03:00.281Z",
+        "gitCommitSha": "713eef51b04efc98d6fa565323b495f7c9c89fd4"
+      }
     ]
   }
 }

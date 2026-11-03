@@ -1,6 +1,6 @@
 # Agent Orchestration
 
-Agents start cold and cost tokens. Default: work directly in the main context.
+Delegate when it improves the result; small known-file reads and edits stay in the main context.
 
 ## When to delegate
 

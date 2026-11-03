@@ -72,3 +72,6 @@ ponytail-modes/
 *.lock
 dev-mods/
 .claude-plugin/types/
+security/
+# installer-managed (reinstall: npx impeccable install --user --providers=claude -y)
+skills/impeccable/
