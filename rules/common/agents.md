@@ -30,7 +30,11 @@ Always set `model` explicitly when dispatching a subagent:
 
 Never use `haiku` for implementation or review.
 
-**No second review.** One review per task. When it reports findings, dispatch the fix, then verify the fix yourself (read the diff, run the tests) — do not dispatch a scoped re-review subagent. Same for the final review: one fix wave, verified by you, no re-review.
+`CLAUDE_CODE_SUBAGENT_MODEL=sonnet` is set: a subagent dispatched without `model` runs on Sonnet, so pass `model: "opus"` explicitly for the opus rows above.
+
+**Per-task review only when it earns it.** Skip the per-task review subagent for simple/mechanical tasks (1-2 files, clear spec, tests pass): verify them yourself (diff + tests) and let the final branch review cover them. Dispatch a per-task review for tasks touching several files, shared interfaces, or security-sensitive code.
+
+**No second review.** At most one review per task. When it reports findings, dispatch the fix, then verify the fix yourself (read the diff, run the tests) — do not dispatch a scoped re-review subagent. Same for the final review: one fix wave, verified by you, no re-review.
 
 **Exception — re-review allowed** (one scoped re-review, `opus`) when the fix:
 - addresses a Critical finding or a security issue (auth, user input, secrets, SQL/DB queries, crypto, file paths), or
