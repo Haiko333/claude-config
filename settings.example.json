@@ -56,5 +56,6 @@
         "repo": "DietrichGebert/ponytail"
       }
     }
-  }
+  },
+  "autoCompactWindow": 300000
 }
