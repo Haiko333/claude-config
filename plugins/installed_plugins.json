@@ -34,11 +34,11 @@
     "postman@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/postman/2.0.1",
-        "version": "2.0.1",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/postman/2.3.0",
+        "version": "2.3.0",
         "installedAt": "2026-10-20T12:51:57.102Z",
-        "lastUpdated": "2026-10-20T12:51:57.102Z",
-        "gitCommitSha": "c6352ef5605cd46d3f817e15c601eeb9a56c08f7"
+        "lastUpdated": "2026-11-05T17:25:39.730Z",
+        "gitCommitSha": "1fdd3f1e2736c7cb83780a221cb9f83641215ab7"
       }
     ],
     "rust-analyzer-lsp@claude-plugins-official": [
@@ -91,11 +91,11 @@
     "context7@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/context7/a7ba5b93db0c",
-        "version": "a7ba5b93db0c",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/context7/a1ecfbc7f138",
+        "version": "a1ecfbc7f138",
         "installedAt": "2026-11-03T13:02:46.221Z",
-        "lastUpdated": "2026-11-03T13:02:46.221Z",
-        "gitCommitSha": "a7ba5b93db0c7c8d17f3f1d25853adca79598a1a"
+        "lastUpdated": "2026-11-06T10:33:39.042Z",
+        "gitCommitSha": "a1ecfbc7f138a0ef455088f7f28cda2d22a0f853"
       }
     ],
     "security-guidance@claude-plugins-official": [
@@ -115,16 +115,6 @@
         "version": "1.0.0",
         "installedAt": "2026-11-03T13:02:47.869Z",
         "lastUpdated": "2026-11-03T13:02:47.869Z",
-        "gitCommitSha": "a7ba5b93db0c7c8d17f3f1d25853adca79598a1a"
-      }
-    ],
-    "serena@claude-plugins-official": [
-      {
-        "scope": "user",
-        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/serena/a7ba5b93db0c",
-        "version": "a7ba5b93db0c",
-        "installedAt": "2026-11-03T13:02:48.689Z",
-        "lastUpdated": "2026-11-03T13:02:48.689Z",
         "gitCommitSha": "a7ba5b93db0c7c8d17f3f1d25853adca79598a1a"
       }
     ],
