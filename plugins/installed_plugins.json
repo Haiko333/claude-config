@@ -81,31 +81,31 @@
     "superpowers@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/superpowers/7.0.0",
-        "version": "7.0.0",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/superpowers/7.0.2",
+        "version": "7.0.2",
         "installedAt": "2026-11-03T13:02:45.520Z",
-        "lastUpdated": "2026-11-03T13:02:45.520Z",
-        "gitCommitSha": "bb92a77741419a4ab5f06e711a283343f1ada0c3"
+        "lastUpdated": "2026-11-15T16:52:20.631Z",
+        "gitCommitSha": "22f0b463e7a5e579904dd6211a520321035526f7"
       }
     ],
     "context7@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/context7/a1ecfbc7f138",
-        "version": "a1ecfbc7f138",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/context7/b5b01ac4f889",
+        "version": "b5b01ac4f889",
         "installedAt": "2026-11-03T13:02:46.221Z",
-        "lastUpdated": "2026-11-06T10:33:39.042Z",
-        "gitCommitSha": "a1ecfbc7f138a0ef455088f7f28cda2d22a0f853"
+        "lastUpdated": "2026-11-15T16:52:17.217Z",
+        "gitCommitSha": "b5b01ac4f889fec0c4c6bb89f27ca7c8574473f6"
       }
     ],
     "security-guidance@claude-plugins-official": [
       {
         "scope": "user",
-        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.17",
-        "version": "2.0.17",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-plugins-official/security-guidance/2.0.20",
+        "version": "2.0.20",
         "installedAt": "2026-11-03T13:02:47.060Z",
-        "lastUpdated": "2026-11-03T13:02:47.060Z",
-        "gitCommitSha": "a7ba5b93db0c7c8d17f3f1d25853adca79598a1a"
+        "lastUpdated": "2026-11-15T16:52:17.215Z",
+        "gitCommitSha": "b5b01ac4f889fec0c4c6bb89f27ca7c8574473f6"
       }
     ],
     "typescript-lsp@claude-plugins-official": [
@@ -136,6 +136,27 @@
         "installedAt": "2026-11-03T13:03:00.281Z",
         "lastUpdated": "2026-11-03T13:03:00.281Z",
         "gitCommitSha": "713eef51b04efc98d6fa565323b495f7c9c89fd4"
+      }
+    ],
+    "hostinger-connector@anthropic-plugin-directory": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/anthropic-plugin-directory/hostinger-connector/1.3.0-6ddee220db50",
+        "version": "1.3.0-6ddee220db50",
+        "installedAt": "2026-11-13T21:28:42.009Z",
+        "lastUpdated": "2026-11-13T21:28:42.009Z",
+        "gitCommitSha": "6ddee220db50eca19884bd38112aebf4d3c034fa",
+        "directoryRepositoryKey": "github.com/hostinger/claude-plugin#"
+      }
+    ],
+    "vuln@claude-vuln": [
+      {
+        "scope": "user",
+        "installPath": "/home/h41k0/.claude/plugins/cache/claude-vuln/vuln/0.1.1",
+        "version": "0.1.1",
+        "installedAt": "2026-11-15T17:21:00.615Z",
+        "lastUpdated": "2026-11-15T17:49:44.852Z",
+        "gitCommitSha": "22492de3fada291092b576e0c7415ee0076d4c45"
       }
     ]
   }

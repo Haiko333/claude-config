@@ -5,7 +5,7 @@
       "repo": "anthropics/claude-plugins-official"
     },
     "installLocation": "/home/h41k0/.claude/plugins/marketplaces/claude-plugins-official",
-    "lastUpdated": "2026-11-06T12:53:18.350Z"
+    "lastUpdated": "2026-11-15T17:38:31.220Z"
   },
   "aiblueprint": {
     "source": {
@@ -38,5 +38,13 @@
     },
     "installLocation": "/home/h41k0/.claude/plugins/marketplaces/ui-ux-pro-max-skill",
     "lastUpdated": "2026-11-03T13:02:59.429Z"
+  },
+  "claude-vuln": {
+    "source": {
+      "source": "directory",
+      "path": "/home/h41k0/Development/claude/claude-vuln"
+    },
+    "installLocation": "/home/h41k0/Development/claude/claude-vuln",
+    "lastUpdated": "2026-11-15T17:49:36.590Z"
   }
 }
