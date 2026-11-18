@@ -1,6 +1,6 @@
 ---
 name: fix-pr-comments
-description: Fetch PR review comments and implement all requested changes
+description: Récupère les commentaires de revue d'une PR (gh) et applique les changements demandés. À utiliser quand on demande de traiter, corriger ou répondre aux retours d'une PR.
 allowed-tools: Bash(gh :*), Bash(git :*), Read, Edit, MultiEdit
 ---
 

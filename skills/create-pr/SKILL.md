@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Create and push PR with auto-generated title and description
+description: Pousse la branche et ouvre une PR GitHub (gh) avec titre et description générés depuis les commits. À utiliser quand on demande d'ouvrir, créer ou publier une PR.
 model: haiku
 allowed-tools: Bash(git :*), Bash(gh :*)
 ---

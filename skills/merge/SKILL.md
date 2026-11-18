@@ -1,6 +1,6 @@
 ---
 name: merge
-description: Intelligently merge branches with context-aware conflict resolution
+description: Fusionne une branche dans la branche courante et résout les conflits en tenant compte de l'intention de chaque côté. À utiliser pour « merge X », ou quand un merge ou un rebase est en conflit.
 allowed-tools: Bash(git :*), Bash(gh :*), Read, Edit, MultiEdit, Task
 argument-hint: <branch-name>
 ---

@@ -75,3 +75,9 @@ dev-mods/
 security/
 # installer-managed (reinstall: npx impeccable install --user --providers=claude -y)
 skills/impeccable/
+
+# === Synchro / audit (added 2026-11-18) ===
+.stignore
+settings.local.json
+rapport*
+*.audit.json

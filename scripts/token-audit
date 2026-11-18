@@ -1,0 +1,723 @@
+#!/usr/bin/env python3
+"""token-audit — analyse la consommation de tokens de Claude Code.
+
+Lit les transcripts ~/.claude/projects/**/*.jsonl (sessions + sous-agents) et
+produit un rapport Markdown : totaux, top projets, top sessions, part par cause,
+contexte de base. Stdlib uniquement (Python >= 3.9).
+
+Usage :
+  token-audit                    # 30 derniers jours
+  token-audit --days 7 --top 15
+  token-audit --project multica  # filtre sur le chemin du projet
+  token-audit --json out.json    # export brut en plus du rapport
+  token-audit --probe            # mesure le contexte d'une session vide (lance `claude -p`, ~1 appel)
+
+Méthode :
+- Coût réel : usage de chaque appel API (dédupliqué par message.id), pondéré par
+  le tarif API du modèle. Sur un abonnement Max ce n'est pas une facture, mais les
+  limites d'usage suivent le même ordre de grandeur : c'est le meilleur proxy.
+- Attribution par cause : chaque contenu entrant dans le contexte (résultat
+  d'outil, pièce jointe, CLAUDE.md…) coûte une écriture de cache puis une lecture
+  de cache à CHAQUE appel suivant jusqu'à la prochaine compaction ou la fin de la
+  session (« coût de résidence »). Tokens estimés à partir des caractères.
+"""
+import argparse
+import glob
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import time
+from collections import defaultdict
+
+# $/MTok : input, output, cache read. Écriture cache = input x1.25 (5 min) ou x2 (1 h).
+PRICES = {
+    "claude-fable-5-2": (8.0, 40.0, 0.20),
+    "claude-opus-5-5": (4.0, 20.0, 0.20),
+    "claude-opus-5": (5.0, 25.0, 0.50),
+    "claude-opus-4-8": (5.0, 25.0, 0.50),
+    "claude-sonnet-5-5": (2.0, 10.0, 0.10),
+    "claude-sonnet-5": (2.0, 10.0, 0.20),
+    "claude-haiku-5-5": (0.10, 0.50, 0.01),
+    "claude-haiku-4-5": (1.0, 5.0, 0.10),
+}
+DEFAULT_PRICE = PRICES["claude-opus-5-5"]
+CHARS_PER_TOKEN = 3.4          # calibré sur les transcripts locaux (voir --calibrate)
+IMAGE_TOKENS = 1600
+BIG_READ_TOKENS = 8000         # « gros fichier » lu
+LONG_BASH_TOKENS = 4000        # « sortie Bash longue »
+LONG_CTX = (100_000, 200_000)  # seuils « session trop longue »
+EDIT_LOOP_MIN = 6              # >= N éditions du même fichier dans une session
+ERROR_STREAK_MIN = 3           # >= N erreurs d'outil consécutives
+TEST_RE = re.compile(r"\b(pytest|jest|vitest|cargo (test|build|clippy)|go (test|build)|npm (run |)(test|build|lint)|"
+                     r"pnpm (test|build)|bun (test|run build)|make\b|tsc\b|eslint|ruff|mypy|gradle|mvn)\b")
+
+# pièces jointes internes (UI/état), non envoyées au modèle
+NOT_SENT = {"prompt_snapshot", "deferred_tools_record", "thinking_drop"}
+ATTACH_CAT = {
+    "instructions": "CLAUDE.md / rules",
+    "nested_memory": "CLAUDE.md / rules",
+    "skill_listing": "Liste des skills",
+    "mcp_instructions_delta": "Instructions des serveurs MCP",
+    "deferred_tools_delta": "Liste des outils différés",
+    "deferred_tools_record": "Liste des outils différés",
+    "agent_listing_delta": "Liste des agents",
+    "hook_additional_context": "Hooks (contexte injecté)",
+    "hook_success": "Hooks (contexte injecté)",
+    "file": "Fichiers joints / modifiés",
+    "edited_text_file": "Fichiers joints / modifiés",
+    "compact_file_reference": "Fichiers joints / modifiés",
+}
+
+
+def est_tokens(obj):
+    """Estime les tokens d'un contenu (str, liste de blocs, dict)."""
+    if obj is None:
+        return 0
+    if isinstance(obj, str):
+        return int(len(obj) / CHARS_PER_TOKEN)
+    if isinstance(obj, list):
+        return sum(est_tokens(x) for x in obj)
+    if isinstance(obj, dict):
+        if obj.get("type") == "image":
+            return IMAGE_TOKENS
+        if "text" in obj and isinstance(obj["text"], str):
+            return est_tokens(obj["text"])
+        if "content" in obj:
+            return est_tokens(obj["content"])
+        return int(len(json.dumps(obj, ensure_ascii=False)) / CHARS_PER_TOKEN)
+    return int(len(str(obj)) / CHARS_PER_TOKEN)
+
+
+def attachment_tokens(rec):
+    """Ce qui est réellement envoyé au modèle : le champ `rendered` s'il existe."""
+    if (rec.get("attachment") or {}).get("type") in NOT_SENT:
+        return 0
+    if "rendered" in rec:
+        return est_tokens(rec.get("rendered"))
+    return est_tokens(json.dumps(rec.get("attachment") or {}, ensure_ascii=False))
+
+
+def price(model):
+    for key, val in PRICES.items():
+        if model and model.startswith(key):
+            return val
+    return DEFAULT_PRICE
+
+
+def call_cost(model, u):
+    p_in, p_out, p_cr = price(model)
+    cc = u.get("cache_creation") or {}
+    cc_1h = cc.get("ephemeral_1h_input_tokens", 0) or 0
+    cc_5m = cc.get("ephemeral_5m_input_tokens", 0) or 0
+    cc_other = max(0, (u.get("cache_creation_input_tokens") or 0) - cc_1h - cc_5m)
+    return (p_in * (u.get("input_tokens") or 0) + p_out * (u.get("output_tokens") or 0)
+            + p_cr * (u.get("cache_read_input_tokens") or 0)
+            + p_in * (1.25 * (cc_5m + cc_other) + 2.0 * cc_1h)) / 1e6
+
+
+def short_path(p):
+    home = os.path.expanduser("~")
+    return ("~" + p[len(home):]) if p and p.startswith(home) else (p or "?")
+
+
+def project_of(cwd):
+    p = short_path(cwd)
+    m = re.match(r"~/multica_workspaces/([^/]+)", p)
+    return f"multica:{m.group(1)}" if m else p
+
+
+class Segment:
+    """Contenus présents dans le contexte entre deux compactions."""
+
+    def __init__(self):
+        self.items = []   # (cat, tokens, call_index_introduit)
+        self.calls = []   # (model, cost_read_unit)
+
+
+class Session:
+    def __init__(self, sid, path, is_sub=False, agent_type=None):
+        self.sid, self.path, self.is_sub, self.agent_type = sid, path, is_sub, agent_type
+        self.project, self.entrypoint, self.title = "?", "?", ""
+        self.cost = 0.0
+        self.tok = defaultdict(int)
+        self.calls = 0
+        self.max_ctx = 0
+        self.first_ts = self.last_ts = None
+        self.compactions = []  # (déclencheur, tokens avant, tokens après), dans la fenêtre
+        self.compact_cost = 0.0
+        self.errors = 0
+        self.max_err_streak = 0
+        self.edit_counts = defaultdict(int)
+
+
+class Audit:
+    def __init__(self, cutoff):
+        self.cutoff = cutoff
+        self.seen_msg, self.seen_tool, self.seen_uuid = set(), set(), set()
+        self.sessions = {}
+        self.cat_cost = defaultdict(float)
+        self.cat_tok = defaultdict(int)
+        self.model_tok = defaultdict(lambda: defaultdict(int))
+        self.model_cost = defaultdict(float)
+        self.long_ctx_cost = [0.0, 0.0]
+        self.rewrite_cost = 0.0
+        self.after_error_cost = 0.0
+        self.thinking_tok = defaultdict(int)
+        self.thinking_cost = 0.0
+        self.compact_est_cost = 0.0
+        self.sub_cost = defaultdict(float)
+        self.mcp_server_cost = defaultdict(float)
+        self.big_reads = defaultdict(lambda: [0, 0])  # chemin -> [n, tokens]
+        self.total_cost = 0.0
+        self.baseline = None
+
+    # ---------- parsing d'un fichier ----------
+    def process_file(self, path, sess):
+        tool_names = {}
+        seg = Segment()
+        segments = [seg]
+        state = {"last_msg": None, "last_error": False, "err_streak": 0, "prev_ts": None,
+                 "shape": None, "base_started": False}
+        with open(path, errors="ignore") as fh:
+            for line in fh:
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                seg = self._dispatch(rec, sess, seg, segments, tool_names, state)
+        for s in segments:
+            self._settle_segment(s)
+
+    def _dispatch(self, rec, sess, seg, segments, tool_names, state):
+        t = rec.get("type")
+        ts = rec.get("timestamp")
+        if ts:
+            sess.first_ts = sess.first_ts or ts
+            sess.last_ts = ts
+        if rec.get("cwd") and sess.project == "?":
+            sess.project = project_of(rec["cwd"])
+            sess.entrypoint = rec.get("entrypoint", "?")
+        if t == "ai-title":
+            sess.title = rec.get("aiTitle") or rec.get("title") or sess.title
+        elif t == "api-request-shape":
+            state["shape"] = rec.get("shape")
+            if not state["base_started"]:
+                self._add_shape(seg, state["shape"], len(seg.calls))
+                state["base_started"] = True
+        elif t == "assistant":
+            self._on_assistant(rec, sess, seg, tool_names, state)
+        elif t == "user":
+            self._on_user(rec, sess, seg, tool_names, state)
+        elif t == "attachment":
+            self._on_attachment(rec, seg)
+        elif t == "system" and rec.get("subtype") == "compact_boundary":
+            seg = self._on_compact(rec, sess, segments, state)
+        return seg
+
+    def _in_window(self, ts):
+        return not ts or ts >= self.cutoff
+
+    def _add_shape(self, seg, shape, idx):
+        if not shape:
+            return
+        sys_tok = est_tokens(shape.get("system"))
+        seg.items.append(("Prompt système Claude Code", sys_tok, idx))
+        for tool in shape.get("tools") or []:
+            if tool.get("defer_loading"):
+                continue
+            name = tool.get("name") or tool.get("type") or "?"
+            tok = int(len(json.dumps(tool, ensure_ascii=False)) / CHARS_PER_TOKEN)
+            cat = "Définitions outils MCP (chargées)" if name.startswith("mcp__") else "Définitions outils intégrés"
+            seg.items.append((cat, tok, idx))
+
+    def _on_assistant(self, rec, sess, seg, tool_names, state):
+        msg = rec.get("message") or {}
+        for block in msg.get("content") or []:
+            if block.get("type") == "tool_use":
+                inp = block.get("input") or {}
+                tool_names[block.get("id")] = (block.get("name"), inp)
+                if block.get("name") in ("Edit", "Write", "MultiEdit") and inp.get("file_path"):
+                    sess.edit_counts[inp["file_path"]] += 1
+            if block.get("type") in ("text", "tool_use") and rec.get("uuid") not in self.seen_uuid:
+                seg.items.append(("Historique : messages de l'assistant", est_tokens(
+                    block.get("text") or json.dumps(block.get("input") or {})), len(seg.calls)))
+        self.seen_uuid.add(rec.get("uuid"))
+        mid = msg.get("id")
+        if not mid or mid == state["last_msg"] or mid in self.seen_msg or not msg.get("usage"):
+            return
+        state["last_msg"] = mid
+        self.seen_msg.add(mid)
+        self._account_call(rec, msg, sess, seg, state)
+
+    def _account_call(self, rec, msg, sess, seg, state):
+        u, model = msg["usage"], msg.get("model") or "?"
+        seg.calls.append(model)
+        if model == "<synthetic>" or not self._in_window(rec.get("timestamp")):
+            return
+        cost = call_cost(model, u)
+        ctx = sum(u.get(k) or 0 for k in ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
+        sess.cost += cost
+        sess.calls += 1
+        sess.max_ctx = max(sess.max_ctx, ctx)
+        for k in ("input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"):
+            sess.tok[k] += u.get(k) or 0
+            self.model_tok[model][k] += u.get(k) or 0
+        self.model_cost[model] += cost
+        self.total_cost += cost
+        think = ((u.get("output_tokens_details") or {}).get("thinking_tokens")) or 0
+        self.thinking_tok[model] += think
+        self.thinking_cost += think * price(model)[1] / 1e6
+        visible_out = max(0, (u.get("output_tokens") or 0) - think)
+        self._add_cat("Sortie générée (texte + appels d'outils)", visible_out, visible_out * price(model)[1] / 1e6)
+        self._add_cat("Réflexion (thinking)", think, think * price(model)[1] / 1e6)
+        for i, thr in enumerate(LONG_CTX):
+            if ctx >= thr:
+                self.long_ctx_cost[i] += cost
+        cc, cr = u.get("cache_creation_input_tokens") or 0, u.get("cache_read_input_tokens") or 0
+        if len(seg.calls) > 1 and cc > 20_000 and cc > cr:
+            rew = cc * price(model)[0] * 2.0 / 1e6
+            self.rewrite_cost += rew
+            self._add_cat("Ré-écriture du cache (pause > TTL, changement d'outils/modèle)", cc, rew)
+        cost += self._account_side_iterations(u, sess)
+        if state["last_error"]:
+            self.after_error_cost += cost
+        if sess.is_sub:
+            self.sub_cost[sess.agent_type or "?"] += cost
+
+    def _account_side_iterations(self, u, sess):
+        """Itérations hors `message` (advisor…) : absentes de l'usage principal, contexte renvoyé sans cache."""
+        extra = 0.0
+        for it in u.get("iterations") or []:
+            if it.get("type") in (None, "message"):
+                continue
+            model = it.get("model") or "claude-opus-5-5"
+            c = call_cost(model, it)
+            extra += c
+            tok = (it.get("input_tokens") or 0) + (it.get("output_tokens") or 0)
+            for k in ("input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"):
+                self.model_tok[model][k] += it.get(k) or 0
+            self.model_cost[model] += c
+            self._add_cat(f"Outil {it['type'].replace('_message', '')} (contexte renvoyé sans cache)", tok, c)
+        sess.cost += extra
+        self.total_cost += extra
+        return extra
+
+    def _on_user(self, rec, sess, seg, tool_names, state):
+        msg = rec.get("message") or {}
+        content = msg.get("content")
+        idx = len(seg.calls)
+        uid = rec.get("uuid")
+        if uid in self.seen_uuid:
+            return
+        self.seen_uuid.add(uid)
+        if rec.get("isCompactSummary"):
+            seg.items.append(("Résumés de compaction", est_tokens(content), idx))
+            return
+        if isinstance(content, str):
+            seg.items.append(("Prompts utilisateur", est_tokens(content), idx))
+            return
+        for block in content or []:
+            if block.get("type") == "tool_result":
+                self._on_tool_result(block, rec, sess, seg, tool_names, state, idx)
+            elif block.get("type") == "text":
+                txt = block.get("text") or ""
+                if txt.startswith("Base directory for this skill"):
+                    cat = "Skills (contenu chargé)"
+                elif rec.get("isMeta") or txt.startswith("<system-reminder>"):
+                    cat = "Rappels système / méta"
+                else:
+                    cat = "Prompts utilisateur"
+                seg.items.append((cat, est_tokens(txt), idx))
+            elif block.get("type") == "image":
+                seg.items.append(("Prompts utilisateur", IMAGE_TOKENS, idx))
+
+    def _on_tool_result(self, block, rec, sess, seg, tool_names, state, idx):
+        tid = block.get("tool_use_id")
+        if tid in self.seen_tool:
+            return
+        self.seen_tool.add(tid)
+        name, inp = tool_names.get(tid, ("?", {}))
+        tok = est_tokens(block.get("content"))
+        is_err = bool(block.get("is_error"))
+        state["last_error"] = is_err
+        if is_err:
+            sess.errors += 1
+            state["err_streak"] += 1
+            sess.max_err_streak = max(sess.max_err_streak, state["err_streak"])
+        else:
+            state["err_streak"] = 0
+        seg.items.append((self._tool_cat(name, inp, tok), tok, idx))
+        if name == "Read" and tok >= BIG_READ_TOKENS:
+            br = self.big_reads[short_path(inp.get("file_path"))]
+            br[0] += 1
+            br[1] += tok
+
+    @staticmethod
+    def _tool_cat(name, inp, tok):
+        name = name or "?"
+        if name == "Read":
+            return "Lecture de gros fichiers (>8k tok)" if tok >= BIG_READ_TOKENS else "Lecture de fichiers (normale)"
+        if name in ("Bash", "BashOutput", "Monitor", "TaskOutput"):
+            is_test = bool(TEST_RE.search(str(inp.get("command") or "")))
+            if tok >= LONG_BASH_TOKENS:
+                return "Sorties Bash longues — tests/build" if is_test else "Sorties Bash longues — autres"
+            return "Sorties Bash courtes"
+        if name.startswith("mcp__"):
+            return "Résultats MCP :: " + name.split("__")[1]
+        if name in ("Grep", "Glob", "LS"):
+            return "Recherche (Grep/Glob)"
+        if name in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
+            return "Retours Edit/Write"
+        if name in ("Agent", "Task"):
+            return "Retours des sous-agents (dans la session parente)"
+        if name in ("WebFetch", "WebSearch"):
+            return "Web (fetch/search)"
+        if name == "Skill":
+            return "Skills (contenu chargé)"
+        if name == "ToolSearch":
+            return "ToolSearch (schémas chargés)"
+        return "Autres outils"
+
+    def _on_attachment(self, rec, seg):
+        uid = rec.get("uuid")
+        if uid in self.seen_uuid:
+            return
+        self.seen_uuid.add(uid)
+        att = rec.get("attachment") or {}
+        cat = ATTACH_CAT.get(att.get("type"), "Rappels système / méta")
+        seg.items.append((cat, attachment_tokens(rec), len(seg.calls)))
+
+    def _on_compact(self, rec, sess, segments, state):
+        meta = rec.get("compactMetadata") or {}
+        pre, post = meta.get("preTokens") or 0, meta.get("postTokens") or 0
+        if self._in_window(rec.get("timestamp")):
+            sess.compactions.append((meta.get("trigger") or "?", pre, post))
+            model = segments[-1].calls[-1] if segments[-1].calls else "claude-opus-5-5"
+            p_in, p_out, p_cr = price(model)
+            est = (pre * p_cr + post * p_out + post * p_in * 2.0) / 1e6
+            self.compact_est_cost += est
+            sess.compact_cost += est
+            self._add_cat("Compactage (résumé + ré-amorçage, estimé)", pre, est)
+        new = Segment()
+        segments.append(new)
+        if state["shape"]:
+            self._add_shape(new, state["shape"], 0)
+        return new
+
+    def _settle_segment(self, seg):
+        """Coût de résidence : écriture 1h (x2) + lecture à chaque appel suivant."""
+        n = len(seg.calls)
+        for cat, tok, idx in seg.items:
+            if idx >= n or tok <= 0:
+                continue
+            model = seg.calls[idx]
+            p_in, _, _ = price(model)
+            reads = sum(price(m)[2] for m in seg.calls[idx + 1:])
+            cost = tok * (2.0 * p_in + reads) / 1e6
+            self._add_cat(cat, tok, cost)
+            if cat.startswith("Résultats MCP :: "):
+                self.mcp_server_cost[cat.split(":: ")[1]] += cost
+
+    def _add_cat(self, cat, tok, cost):
+        self.cat_tok[cat] += tok
+        self.cat_cost[cat] += cost
+
+
+# ---------- découverte des fichiers ----------
+def discover(root, days):
+    limit = time.time() - days * 86400
+    out = []
+    for path in glob.glob(os.path.join(root, "*", "*.jsonl")):
+        if os.path.getmtime(path) >= limit:
+            out.append((path, False, None))
+    for path in glob.glob(os.path.join(root, "*", "*", "subagents", "agent-*.jsonl")):
+        if os.path.getmtime(path) >= limit:
+            meta = {}
+            try:
+                with open(path[:-6] + ".meta.json") as fh:
+                    meta = json.load(fh)
+            except (OSError, ValueError):
+                pass
+            out.append((path, True, meta.get("agentType")))
+    # sessions principales d'abord pour que la dédup attribue l'historique au parent
+    return sorted(out, key=lambda x: (x[1], os.path.getmtime(x[0])))
+
+
+def run(args):
+    root = os.path.expanduser(args.root)
+    cutoff = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(time.time() - args.days * 86400))
+    audit = Audit(cutoff)
+    for path, is_sub, agent_type in discover(root, args.days):
+        if is_sub:
+            sid = os.path.basename(os.path.dirname(os.path.dirname(path)))
+        else:
+            sid = os.path.basename(path)[:-6]
+        key = path if is_sub else sid
+        sess = Session(sid, path, is_sub, agent_type)
+        audit.sessions[key] = sess
+        audit.process_file(path, sess)
+        if args.project and args.project not in sess.project:
+            audit.sessions.pop(key)
+    return audit
+
+
+# ---------- rapport ----------
+def fmt_tok(n):
+    return f"{n / 1e6:.1f} M" if n >= 1e6 else f"{n / 1e3:.0f} k"
+
+
+def pct(x, tot):
+    return f"{100 * x / tot:.1f} %" if tot else "-"
+
+
+def report(audit, args):
+    tot = audit.total_cost
+    parents = defaultdict(lambda: {"cost": 0.0, "sub": 0.0, "calls": 0, "max_ctx": 0, "proj": "?", "title": "",
+                                   "ep": "?", "comp": 0, "err": 0, "streak": 0, "loops": 0, "first": ""})
+    for s in audit.sessions.values():
+        p = parents[s.sid]
+        p["cost"] += s.cost
+        p["calls"] += s.calls
+        p["max_ctx"] = max(p["max_ctx"], s.max_ctx)
+        if s.is_sub:
+            p["sub"] += s.cost
+        else:
+            p.update(proj=s.project, title=s.title, ep=s.entrypoint, comp=len(s.compactions), err=s.errors,
+                     streak=s.max_err_streak, first=(s.first_ts or "")[:10],
+                     loops=sum(1 for v in s.edit_counts.values() if v >= EDIT_LOOP_MIN))
+    out = [f"# Audit tokens Claude Code — {args.days} derniers jours\n",
+           f"Coût API équivalent total : **{tot:.2f} $** — {sum(s.calls for s in audit.sessions.values())} appels, "
+           f"{len(parents)} sessions. (Max x5 : proxy des limites, pas une facture.)\n"]
+    out += section_models(audit, tot)
+    out += section_projects(parents, tot, args.top)
+    out += section_sessions(parents, tot, args.top)
+    out += section_causes(audit, tot)
+    out += section_behaviour(audit, parents, tot)
+    out += section_compactions(compactions_by_session(audit), parents, args.top)
+    out += section_subagents(audit, tot)
+    out += section_details(audit, args.top)
+    return "\n".join(out)
+
+
+def section_models(audit, tot):
+    rows = ["## Par modèle\n", "| Modèle | Coût $ | % | input | output | cache read | cache write | dont thinking |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|"]
+    for m, c in sorted(audit.model_cost.items(), key=lambda x: -x[1]):
+        t = audit.model_tok[m]
+        rows.append(f"| {m} | {c:.2f} | {pct(c, tot)} | {fmt_tok(t['input_tokens'])} | {fmt_tok(t['output_tokens'])} | "
+                    f"{fmt_tok(t['cache_read_input_tokens'])} | {fmt_tok(t['cache_creation_input_tokens'])} | "
+                    f"{fmt_tok(audit.thinking_tok[m])} |")
+    return rows + [""]
+
+
+def section_projects(parents, tot, top):
+    proj = defaultdict(lambda: [0.0, 0, 0.0])
+    for p in parents.values():
+        proj[p["proj"]][0] += p["cost"]
+        proj[p["proj"]][1] += 1
+        proj[p["proj"]][2] += p["sub"]
+    rows = ["## Top projets\n", "| Projet | Coût $ | % | sessions | dont sous-agents |", "|---|---:|---:|---:|---:|"]
+    for name, (c, n, sub) in sorted(proj.items(), key=lambda x: -x[1][0])[:top]:
+        rows.append(f"| {name} | {c:.2f} | {pct(c, tot)} | {n} | {pct(sub, c)} |")
+    return rows + [""]
+
+
+def section_sessions(parents, tot, top):
+    rows = ["## Top sessions\n",
+            "| Session | Date | Projet | Titre | Coût $ | % | appels | ctx max | compact. | sous-ag. | via |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---|"]
+    for sid, p in sorted(parents.items(), key=lambda x: -x[1]["cost"])[:top]:
+        rows.append(f"| {sid[:8]} | {p['first']} | {p['proj']} | {p['title'][:40]} | {p['cost']:.2f} | {pct(p['cost'], tot)} | "
+                    f"{p['calls']} | {fmt_tok(p['max_ctx'])} | {p['comp']} | {pct(p['sub'], p['cost'])} | {p['ep']} |")
+    return rows + [""]
+
+
+def compactions_by_session(audit):
+    """Compactions par session principale (sous-agents rattachés à leur session parente)."""
+    res = {}
+    for s in audit.sessions.values():
+        if not s.compactions:
+            continue
+        r = res.setdefault(s.sid, {"main": 0, "sub": 0, "auto": 0, "manual": 0, "cost": 0.0, "max_pre": 0})
+        r["sub" if s.is_sub else "main"] += len(s.compactions)
+        r["cost"] += s.compact_cost
+        for trigger, pre, _ in s.compactions:
+            r["manual" if trigger == "manual" else "auto"] += 1
+            r["max_pre"] = max(r["max_pre"], pre)
+    return res
+
+
+def section_compactions(comp, parents, top):
+    n_sessions = len(parents)
+    buckets = {"0": n_sessions - len(comp), "1": 0, "2-3": 0, "4-9": 0, "10+": 0}
+    for r in comp.values():
+        n = r["main"] + r["sub"]
+        key = "1" if n == 1 else "2-3" if n <= 3 else "4-9" if n <= 9 else "10+"
+        buckets[key] += 1
+    rows = ["## Compactions par session\n",
+            "Répartition des sessions : " + " · ".join(f"{k} compaction(s) : {v}" for k, v in buckets.items()) + "\n",
+            "| Session | Projet | Titre | principale | sous-agents | auto / manuel | plus gros contexte compacté | coût compactions $ | coût session $ |",
+            "|---|---|---|---:|---:|---|---:|---:|---:|"]
+    ranked = sorted(comp.items(), key=lambda x: (-(x[1]["main"] + x[1]["sub"]), -x[1]["cost"]))[:top]
+    for sid, r in ranked:
+        p = parents.get(sid, {})
+        rows.append(f"| {sid[:8]} | {p.get('proj', '?')} | {p.get('title', '')[:40]} | {r['main']} | {r['sub']} | "
+                    f"{r['auto']} / {r['manual']} | {fmt_tok(r['max_pre'])} | {r['cost']:.2f} | {p.get('cost', 0.0):.2f} |")
+    return rows + [""]
+
+
+def section_causes(audit, tot):
+    rows = ["## Part par cause (attribution estimée)\n",
+            "Contenu en contexte = écriture cache + relecture à chaque appel suivant. Les lignes se recoupent "
+            "partiellement avec le total réel (estimation chars→tokens).\n",
+            "| Cause | Tokens (estim.) | Coût $ | % du total |", "|---|---:|---:|---:|"]
+    mcp_total = sum(v for k, v in audit.cat_cost.items() if k.startswith("Résultats MCP :: "))
+    merged = {k: v for k, v in audit.cat_cost.items() if not k.startswith("Résultats MCP :: ")}
+    merged["Résultats MCP (tous serveurs)"] = mcp_total
+    tok_mcp = sum(v for k, v in audit.cat_tok.items() if k.startswith("Résultats MCP :: "))
+    for cat, c in sorted(merged.items(), key=lambda x: -x[1]):
+        t = tok_mcp if cat.startswith("Résultats MCP (") else audit.cat_tok[cat]
+        rows.append(f"| {cat} | {fmt_tok(t)} | {c:.2f} | {pct(c, tot)} |")
+    attributed = sum(merged.values())
+    rows.append(f"| *Somme attribuée / total réel* | | {attributed:.2f} / {tot:.2f} | {pct(attributed, tot)} |")
+    return rows + [""]
+
+
+def section_behaviour(audit, parents, tot):
+    longs = [p for p in parents.values() if p["max_ctx"] >= LONG_CTX[0]]
+    loops = sum(p["loops"] for p in parents.values())
+    streaks = sum(1 for p in parents.values() if p["streak"] >= ERROR_STREAK_MIN)
+    rows = ["## Comportements coûteux\n", "| Indicateur | Valeur | Coût $ | % |", "|---|---|---:|---:|",
+            f"| Appels avec contexte ≥ 100k | {len(longs)} sessions | {audit.long_ctx_cost[0]:.2f} | {pct(audit.long_ctx_cost[0], tot)} |",
+            f"| Appels avec contexte ≥ 200k | | {audit.long_ctx_cost[1]:.2f} | {pct(audit.long_ctx_cost[1], tot)} |",
+            f"| Compactages | {sum(p['comp'] for p in parents.values())} | {audit.compact_est_cost:.2f} | {pct(audit.compact_est_cost, tot)} |",
+            f"| Ré-écritures de cache | | {audit.rewrite_cost:.2f} | {pct(audit.rewrite_cost, tot)} |",
+            f"| Appels juste après une erreur d'outil | {sum(p['err'] for p in parents.values())} erreurs | "
+            f"{audit.after_error_cost:.2f} | {pct(audit.after_error_cost, tot)} |",
+            f"| Sessions avec ≥{ERROR_STREAK_MIN} erreurs d'affilée | {streaks} | | |",
+            f"| Fichiers édités ≥{EDIT_LOOP_MIN} fois dans une session | {loops} | | |",
+            f"| Réflexion (thinking) | | {audit.thinking_cost:.2f} | {pct(audit.thinking_cost, tot)} |"]
+    return rows + [""]
+
+
+def section_subagents(audit, tot):
+    rows = ["## Sous-agents (coût de leurs propres appels)\n", "| Type | Coût $ | % |", "|---|---:|---:|"]
+    for t, c in sorted(audit.sub_cost.items(), key=lambda x: -x[1]):
+        rows.append(f"| {t} | {c:.2f} | {pct(c, tot)} |")
+    rows.append(f"| **Total** | {sum(audit.sub_cost.values()):.2f} | {pct(sum(audit.sub_cost.values()), tot)} |")
+    return rows + [""]
+
+
+def section_details(audit, top):
+    rows = ["## Détails\n", "### Résultats MCP par serveur\n", "| Serveur | Coût $ |", "|---|---:|"]
+    for s, c in sorted(audit.mcp_server_cost.items(), key=lambda x: -x[1])[:top]:
+        rows.append(f"| {s} | {c:.2f} |")
+    rows += ["", "### Gros fichiers lus le plus souvent\n", "| Fichier | lectures | tokens |", "|---|---:|---:|"]
+    for f, (n, t) in sorted(audit.big_reads.items(), key=lambda x: -x[1][1])[:top]:
+        rows.append(f"| {f} | {n} | {fmt_tok(t)} |")
+    return rows + [""]
+
+
+# ---------- contexte de base ----------
+def baseline_from_transcripts(root):
+    """Premier appel de la session principale la plus récente : prompt système, outils, pièces jointes."""
+    files = sorted(glob.glob(os.path.join(root, "*", "*.jsonl")), key=os.path.getmtime, reverse=True)
+    for path in files[:30]:
+        res = _first_call_breakdown(path)
+        if res:
+            return res
+    return None
+
+
+def _first_call_breakdown(path):
+    shape, parts, usage = None, defaultdict(int), None
+    with open(path, errors="ignore") as fh:
+        for line in fh:
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            t = rec.get("type")
+            if t == "api-request-shape" and shape is None:
+                shape = rec.get("shape")
+            elif t == "attachment":
+                att = rec.get("attachment") or {}
+                parts[ATTACH_CAT.get(att.get("type"), "Rappels système / méta")] += attachment_tokens(rec)
+            elif t == "assistant" and (rec.get("message") or {}).get("usage"):
+                usage = rec["message"]["usage"]
+                break
+    if not shape or not usage:
+        return None
+    parts["Prompt système Claude Code"] = est_tokens(shape.get("system"))
+    for tool in shape.get("tools") or []:
+        if tool.get("defer_loading"):
+            parts["Outils différés (nom seul, ~0)"] += 0
+            continue
+        name = tool.get("name") or "?"
+        cat = "Définitions outils MCP (chargées)" if name.startswith("mcp__") else "Définitions outils intégrés"
+        parts[cat] += int(len(json.dumps(tool, ensure_ascii=False)) / CHARS_PER_TOKEN)
+    real = sum(usage.get(k) or 0 for k in ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
+    return {"file": short_path(path), "real_tokens": real, "parts": dict(parts)}
+
+
+def probe_baseline():
+    """Lance une vraie session vide (`claude -p`) dans un dossier temporaire et lit l'usage."""
+    with tempfile.TemporaryDirectory() as d:
+        try:
+            out = subprocess.run(["claude", "-p", "Réponds uniquement: OK", "--output-format", "json"],
+                                 cwd=d, capture_output=True, text=True, timeout=180)
+            data = json.loads(out.stdout)
+        except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+            return {"error": str(exc)}
+    u = data.get("usage") or {}
+    return {"input": u.get("input_tokens"), "cache_read": u.get("cache_read_input_tokens"),
+            "cache_write": u.get("cache_creation_input_tokens"), "output": u.get("output_tokens"),
+            "total_context": sum(u.get(k) or 0 for k in ("input_tokens", "cache_read_input_tokens",
+                                                         "cache_creation_input_tokens")),
+            "cost_usd": data.get("total_cost_usd")}
+
+
+def section_baseline(base, probe):
+    rows = ["## Contexte de base (session vide)\n"]
+    if base:
+        est = sum(base["parts"].values()) or 1
+        scale = base["real_tokens"] / est
+        rows += [f"Source : premier appel de `{base['file']}` — contexte réel **{fmt_tok(base['real_tokens'])}** "
+                 f"(composants estimés puis recalés x{scale:.2f} sur ce total).\n",
+                 "| Composant | Tokens | % |", "|---|---:|---:|"]
+        for k, v in sorted(base["parts"].items(), key=lambda x: -x[1]):
+            if v:
+                rows.append(f"| {k} | {fmt_tok(v * scale)} | {pct(v, est)} |")
+    if probe:
+        rows += ["", f"Mesure `claude -p` dans un dossier vide : {json.dumps(probe)}"]
+    return rows + [""]
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Audit de consommation de tokens Claude Code")
+    ap.add_argument("--days", type=int, default=30)
+    ap.add_argument("--top", type=int, default=12)
+    ap.add_argument("--project", help="filtre (sous-chaîne du chemin projet)")
+    ap.add_argument("--root", default="~/.claude/projects")
+    ap.add_argument("--json", help="écrit les agrégats bruts dans ce fichier")
+    ap.add_argument("--probe", action="store_true", help="mesure une session vide via `claude -p` (consomme ~1 appel)")
+    args = ap.parse_args()
+    audit = run(args)
+    text = report(audit, args)
+    base = baseline_from_transcripts(os.path.expanduser(args.root))
+    probe = probe_baseline() if args.probe else None
+    text += "\n" + "\n".join(section_baseline(base, probe))
+    print(text)
+    if args.json:
+        with open(args.json, "w") as fh:
+            json.dump({"total_cost": audit.total_cost, "by_cause": audit.cat_cost, "by_model": audit.model_cost,
+                       "subagents": audit.sub_cost, "compactions_by_session": compactions_by_session(audit),
+                       "baseline": base, "probe": probe}, fh, indent=1, ensure_ascii=False)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

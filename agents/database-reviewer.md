@@ -1,6 +1,6 @@
 ---
 name: database-reviewer
-description: PostgreSQL database specialist for query optimization, schema design, security, and performance. Use PROACTIVELY when writing SQL, creating migrations, designing schemas, or troubleshooting database performance. Incorporates Supabase best practices.
+description: Revue PostgreSQL/Supabase : requêtes lentes, schéma, migrations, index, RLS. Seulement quand un changement touche du SQL, une migration ou un schéma, ou pour diagnostiquer une base lente.
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 model: sonnet
 ---

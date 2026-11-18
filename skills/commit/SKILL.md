@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Quick commit and push with minimal, clean messages
+description: Commit puis push des changements en cours avec un message court au format type: description. À utiliser quand on demande de committer, « commit », « push ». Pas pour ouvrir une PR (create-pr).
 model: haiku
 allowed-tools: Bash(git :*), Bash(npm :*), Bash(pnpm :*)
 ---

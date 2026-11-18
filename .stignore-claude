@@ -1,0 +1,48 @@
+// Motifs Syncthing du dossier ~/.claude — fichier synchronisé, inclus par .stignore.
+// Le .stignore lui-même ne se synchronise pas : créer sur CHAQUE machine, AVANT le premier
+// partage, un ~/.claude/.stignore contenant la seule ligne :  #include .stignore-claude
+// Le premier motif qui correspond l'emporte : exclusions d'abord, liste blanche ensuite, `*` à la fin.
+
+// ---------- Secrets : jamais synchronisés ----------
+/.credentials.json
+**/.env
+**/.env.*
+*.key
+*.pem
+*.p12
+
+// ---------- Machine-locale à l'intérieur des dossiers synchronisés ----------
+(?d)**/node_modules
+(?d)**/.DS_Store
+(?d)*.lock
+/scripts/statusline/data
+/scripts/ai-router/data
+/skills/impeccable
+/skills/synced
+/skills/*/.cache
+/mods/docs
+/mods/*/types
+
+// ---------- Liste blanche : la config portable ----------
+!/.stignore-claude
+!/CLAUDE.md
+!/settings.json
+!/settings.example.json
+!/profiles
+!/agents
+!/commands
+!/rules
+!/skills
+!/scripts
+!/mods
+!/output-styles
+!/README.md
+!/install.sh
+!/.gitignore
+
+// ---------- Tout le reste est machine-local ----------
+// projects/ (transcripts + auto-mémoire), history.jsonl, sessions/, session-env/, file-history/,
+// shell-snapshots/, paste-cache/, tasks/, plans/, todos/, cache/, backups/, ide/, chrome/,
+// telemetry/, security/, uploads/, state/, plugins/ (cache, marketplaces, chemins absolus),
+// dev-mods/, ponytail-modes/, stats-cache.json, policy-limits*, remote-settings*, .git/
+*

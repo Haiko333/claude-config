@@ -62,15 +62,12 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 
 | Agent | When it's used |
 |-------|---------------|
-| `action` | Conditional action executor |
-| `build-error-resolver` | Automatically fixes build and TypeScript errors |
-| `code-reviewer` | Reviews code after every write/modify |
-| `database-reviewer` | SQL, schema design, and Supabase patterns |
-| `explore-codebase` | Broad codebase exploration tasks |
-| `explore-docs` | Library documentation research via Context7 |
-| `security-reviewer` | OWASP Top 10 and vulnerability detection |
-| `typescript-reviewer` | TypeScript/JavaScript type safety review |
-| `websearch` | Quick web searches |
+| `scout` | Read-only codebase search on Haiku (pinned in frontmatter); replaces Explore and general-purpose exploration |
+| `build-error-resolver` | Gets a build/typecheck green with minimal diffs, after a direct fix failed or per area from `fix-errors` |
+| `code-reviewer` | One review per task, multi-file changes or before a PR |
+| `typescript-reviewer` | Same, for TypeScript/JavaScript |
+| `security-reviewer` | Auth, user input, secrets, SQL, file paths, crypto |
+| `database-reviewer` | SQL, migrations, schema, Supabase |
 
 ## Skills (slash commands)
 
@@ -84,7 +81,9 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 | security-review | `/security-review` | Full security review of current branch changes |
 | commit | `/commit` | Quick commit with clean message |
 | create-pr | `/create-pr` | Auto-generate PR title and description |
-| fix-errors | `/fix-errors` | Fix all ESLint and TypeScript errors in parallel |
+| fix-errors | `/fix-errors` | Fix all ESLint and TypeScript errors (parallel `build-error-resolver` per area) |
+| handoff | `/handoff` | Resume summary before `/clear` or at the end of a task |
+| animations | `/animations` | Build, review or audit UI motion (merged Emil Kowalski skills) |
 | fix-pr-comments | `/fix-pr-comments` | Apply all PR review comments automatically |
 
 ## Plugins
@@ -101,15 +100,12 @@ If one is missing: `claude plugin install <name>`.
 
 ## Rules loaded on every session
 
-- **security** — mandatory checks before every commit (no hardcoded secrets, input validation, etc.)
-- **testing** — tests for risky logic and bug fixes, scaled to the task
-- **code-review** — review before PRs and for security-sensitive code, severity levels
-- **coding-style** — immutability, KISS/DRY/YAGNI, file size limits
-- **git-workflow** — conventional commits format, PR workflow
-- **development-workflow** — process scaled to the task (small change vs feature)
-- **performance** — token economy, model tiers, context window
-- **agents** — work directly by default; when delegating is worth it
-- **patterns** — repository pattern, API response format, skeleton projects
+- **common/core.md** — concision, context hygiene, scaled workflow, subagents (`scout` for exploration), git and security, Obsidian memory
+- **typescript/** — loaded only on `.ts/.tsx/.js/.jsx` files
+
+## Server profile
+
+`profiles/server.json` is never loaded automatically. Multica agents on the server pass it with `--settings` (200k compaction, superpowers and advisor off, deny rules, hidden skills). Machine-specific settings never go in `settings.json`, which Syncthing shares between machines (see `.stignore-claude`).
 
 ## Security hook
 
